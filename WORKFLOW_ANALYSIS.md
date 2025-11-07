@@ -9,29 +9,32 @@
 ### 数据流图
 
 ```
-[输入图像] → LoadImage (节点2)
-[输入蒙版] → LoadImage (节点3)
-                ↓
-         MaskToSEGS (节点15) → SAMDetectorSegmented (节点10)
-                                      ↓
-                              MaskToImage (节点44)
-                                      ↓
-                              Morphology (节点43) - 形态学处理
-                                      ↓
-                              ImageToMask (节点45)
-                                      ↓
-                           GrowMaskWithBlur (节点23)
-                                      ↓
-                           ETN_ApplyMaskToImage (节点21) ← [原始图像]
-                                      ↓
-                              PreviewImage (节点22)
+[输入图像 + 蒙版] → LoadImage (节点2)
+                         ↓
+              [图像]     [蒙版]
+                ↓         ↓
+                |    MaskToSEGS (节点15)
+                |         ↓
+                |    SAMDetectorSegmented (节点10)
+                |         ↓
+                |    MaskToImage (节点44)
+                |         ↓
+                |    Morphology (节点43) - 形态学处理
+                |         ↓
+                |    ImageToMask (节点45)
+                |         ↓
+                |    GrowMaskWithBlur (节点23)
+                |         ↓
+                └──→ ETN_ApplyMaskToImage (节点21)
+                          ↓
+                   PreviewImage (节点22)
 ```
 
 ## 节点详细解析
 
-### 1. 输入层 (节点 2, 3)
+### 1. 输入层 (节点 2)
 
-**节点 2: 加载图像**
+**节点 2: 加载图像和蒙版**
 ```json
 {
   "inputs": {
@@ -40,22 +43,12 @@
   "class_type": "LoadImage"
 }
 ```
-- **功能**: 加载原始输入图像
+- **功能**: 加载原始输入图像，同时提供图像和蒙版输出
 - **输入**: 文件路径
-- **输出**: 图像张量
-
-**节点 3: 加载蒙版**
-```json
-{
-  "inputs": {
-    "image": "clipspace/clipspace-mask-71685336.29999995.png [input]"
-  },
-  "class_type": "LoadImage"
-}
-```
-- **功能**: 加载初始蒙版提示
-- **输入**: 蒙版图像文件
-- **输出**: 蒙版图像
+- **输出**:
+  - 输出 0 ([2, 0]): 原始图像张量
+  - 输出 1 ([2, 1]): 蒙版通道（用于 SAM 提示）
+- **特点**: LoadImage 节点在加载 PNG 等带有透明通道的图像时，会自动生成蒙版输出
 
 ### 2. SAM 模型层 (节点 20)
 
@@ -85,7 +78,7 @@
     "bbox_fill": false,
     "drop_size": 10,
     "contour_fill": false,
-    "mask": ["3", 1]
+    "mask": ["2", 1]
   },
   "class_type": "MaskToSEGS"
 }
@@ -233,9 +226,10 @@
 ## 工作流执行逻辑
 
 ### 阶段 1: 输入准备
-1. 加载原始图像（节点 2）
-2. 加载初始蒙版提示（节点 3）
-3. 加载 SAM 模型（节点 20）
+1. 加载原始图像和蒙版（节点 2）
+   - 输出 0: 原始图像用于最终应用
+   - 输出 1: 蒙版通道用于 SAM 提示
+2. 加载 SAM 模型（节点 20）
 
 ### 阶段 2: 智能分割
 4. 将蒙版转换为 SEGS 格式（节点 15）
