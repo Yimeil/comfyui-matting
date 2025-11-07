@@ -1,0 +1,35 @@
+package com.yimeil.comfyui.config;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+/**
+ * Web 配置
+ */
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+
+    /**
+     * 配置静态资源映射
+     */
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // 输出目录映射
+        registry.addResourceHandler("/output/**")
+                .addResourceLocations("file:output/");
+    }
+
+    /**
+     * 配置跨域
+     */
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**")
+                .allowedOrigins("*")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .maxAge(3600);
+    }
+}
