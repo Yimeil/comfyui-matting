@@ -1,0 +1,67 @@
+# ComfyUI Matting Service 配置
+# 类似 word2picture 项目的配置方式
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  application:
+    name: comfyui-matting-service
+
+  # 文件上传配置
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 50MB
+      file-size-threshold: 2KB
+
+  # Thymeleaf 配置
+  thymeleaf:
+    cache: false
+    prefix: classpath:/templates/
+    suffix: .html
+    encoding: UTF-8
+    mode: HTML
+
+# ComfyUI 配置（必须配置）
+comfyui:
+  api:
+    # ComfyUI 服务器地址
+    base-url: http://127.0.0.1:8188
+
+    # 连接超时（毫秒）
+    connect-timeout: 10000
+
+    # 读取超时（毫秒）
+    read-timeout: 300000
+
+  # 工作流配置
+  workflow:
+    # 工作流文件存放目录（resources 下的相对路径）
+    directory: workflows
+
+    # 默认工作流
+    default: sam_matting.json
+
+# 输出配置
+output:
+  # 输出目录
+  directory: output
+
+  # 是否自动创建输出目录
+  auto-create: true
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.yimeil.comfyui: DEBUG
+  pattern:
+    console: '%d{yyyy-MM-dd HH:mm:ss} - %msg%n'
