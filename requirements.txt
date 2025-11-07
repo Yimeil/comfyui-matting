@@ -1,7 +1,4 @@
-# ComfyUI 多 API 适配器依赖
-
-# Gradio Web 框架
-gradio>=4.0.0
+# ComfyUI Matting Service 依赖
 
 # HTTP 请求
 requests>=2.28.0
@@ -14,8 +11,3 @@ websocket-client>=1.6.0
 
 # YAML 配置文件解析
 PyYAML>=6.0
-
-# 可选：用于完整 Web 应用开发
-# fastapi>=0.104.0
-# uvicorn[standard]>=0.24.0
-# python-multipart>=0.0.6
