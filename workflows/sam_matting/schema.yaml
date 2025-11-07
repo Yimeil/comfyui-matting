@@ -1,0 +1,152 @@
+workflow_id: sam_matting
+version: "1.0.0"
+name: "SAM 智能抠图"
+description: "使用 Segment Anything Model 进行智能图像抠图"
+
+inputs:
+  - name: image
+    type: image
+    required: true
+    label: "原始图像"
+    description: "需要抠图的图像"
+    accept: [".jpg", ".png", ".jpeg", ".webp"]
+    node_id: "2"
+    node_param: "image"
+
+  - name: mask
+    type: image
+    required: true
+    label: "蒙版图像"
+    description: "指示需要保留的区域（白色区域会被保留）"
+    accept: [".png", ".jpg", ".jpeg"]
+    node_id: "2"
+    node_param: "mask"
+
+parameters:
+  - name: mask_threshold
+    type: float
+    label: "检测阈值"
+    description: "SAM 模型检测的置信度阈值，越高越精确但可能遗漏细节"
+    default: 0.6
+    min: 0.1
+    max: 1.0
+    step: 0.1
+    node_id: "10"
+    node_param: "mask_hint_threshold"
+    category: "基础参数"
+
+  - name: blur_radius
+    type: float
+    label: "边缘模糊"
+    description: "边缘羽化半径，值越大边缘越柔和"
+    default: 1.0
+    min: 0.0
+    max: 5.0
+    step: 0.1
+    node_id: "23"
+    node_param: "blur_radius"
+    category: "基础参数"
+
+  - name: kernel_size
+    type: int
+    label: "形态学核大小"
+    description: "用于填充蒙版内孔洞的核大小，值越大填充效果越强"
+    default: 6
+    min: 2
+    max: 15
+    step: 1
+    node_id: "43"
+    node_param: "kernel_size"
+    category: "高级参数"
+
+  - name: expand
+    type: int
+    label: "蒙版扩展"
+    description: "正值扩展蒙版（向外），负值收缩蒙版（向内）"
+    default: -3
+    min: -10
+    max: 10
+    step: 1
+    node_id: "23"
+    node_param: "expand"
+    category: "高级参数"
+
+  - name: detection_hint
+    type: select
+    label: "检测提示点"
+    description: "SAM 检测时使用的提示点数量"
+    default: "center-1"
+    options:
+      - value: "center-1"
+        label: "中心 1 点"
+      - value: "center-2"
+        label: "中心 2 点"
+      - value: "center-3"
+        label: "中心 3 点"
+    node_id: "10"
+    node_param: "detection_hint"
+    category: "高级参数"
+
+presets:
+  portrait:
+    name: "人像模式"
+    icon: "👤"
+    description: "适合人像抠图，保留柔和边缘和细节"
+    params:
+      mask_threshold: 0.7
+      blur_radius: 2.5
+      kernel_size: 6
+      expand: -4
+      detection_hint: "center-1"
+
+  product:
+    name: "产品模式"
+    icon: "📦"
+    description: "适合产品图抠图，边缘清晰锐利"
+    params:
+      mask_threshold: 0.6
+      blur_radius: 0.3
+      kernel_size: 10
+      expand: -1
+      detection_hint: "center-2"
+
+  hair:
+    name: "毛发模式"
+    icon: "💇"
+    description: "适合有复杂毛发的对象，边缘更柔和"
+    params:
+      mask_threshold: 0.6
+      blur_radius: 1.5
+      kernel_size: 6
+      expand: -1
+      detection_hint: "center-1"
+
+  high_quality:
+    name: "高质量"
+    icon: "⭐"
+    description: "最高质量设置，处理时间较长"
+    params:
+      mask_threshold: 0.75
+      blur_radius: 2.0
+      kernel_size: 8
+      expand: -2
+      detection_hint: "center-3"
+
+  fast:
+    name: "快速模式"
+    icon: "⚡"
+    description: "快速处理，适合预览"
+    params:
+      mask_threshold: 0.5
+      blur_radius: 0.5
+      kernel_size: 4
+      expand: -2
+      detection_hint: "center-1"
+
+outputs:
+  - name: result
+    type: image
+    label: "抠图结果"
+    description: "带透明背景的抠图结果（PNG 格式）"
+    node_id: "22"
+    format: "png"
