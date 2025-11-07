@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# AI 图像抠图 Web 应用启动脚本
+# ComfyUI 多 API 适配器启动脚本
 
 echo "=========================================="
-echo "🎨 AI 图像抠图 Web 应用"
+echo "🎨 ComfyUI 多 API 适配器"
 echo "=========================================="
 echo ""
 
@@ -20,8 +20,17 @@ echo ""
 
 # 检查是否安装了依赖
 echo "📦 检查依赖..."
-if ! python3 -c "import gradio" &> /dev/null; then
-    echo "⚠️  未安装 Gradio，正在安装依赖..."
+missing_deps=0
+
+for pkg in gradio requests Pillow websocket yaml; do
+    if ! python3 -c "import $pkg" &> /dev/null; then
+        missing_deps=1
+        break
+    fi
+done
+
+if [ $missing_deps -eq 1 ]; then
+    echo "⚠️  检测到缺失依赖，正在安装..."
     pip3 install -r requirements.txt
 else
     echo "✅ 依赖已安装"
@@ -45,12 +54,15 @@ else
 fi
 echo ""
 
-# 检查工作流文件
-if [ ! -f "sam_mask_matting_api.json" ]; then
-    echo "❌ 错误：未找到工作流文件 sam_mask_matting_api.json"
+# 检查配置文件
+if [ ! -f "config/workflows.yaml" ]; then
+    echo "❌ 错误：未找到配置文件 config/workflows.yaml"
     exit 1
 fi
-echo "✅ 工作流文件存在"
+
+# 统计工作流数量
+workflow_count=$(grep -c "enabled: true" config/workflows.yaml 2>/dev/null || echo "0")
+echo "✅ 配置文件存在 (已启用 $workflow_count 个工作流)"
 echo ""
 
 # 启动应用
@@ -64,10 +76,11 @@ echo "   局域网: http://$(hostname -I | awk '{print $1}'):7860"
 echo ""
 echo "💡 提示："
 echo "   - 按 Ctrl+C 停止应用"
-echo "   - 完整文档请查看 WEB_APPLICATION_GUIDE.md"
+echo "   - 完整文档请查看 MULTI_API_ADAPTER_DESIGN.md"
+echo "   - 添加新工作流请参考文档中的说明"
 echo ""
 echo "=========================================="
 echo ""
 
 # 运行应用
-python3 gradio_app.py
+python3 -m ui.app

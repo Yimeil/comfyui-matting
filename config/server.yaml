@@ -1,0 +1,15 @@
+server:
+  # ComfyUI 服务器地址
+  comfyui_url: "127.0.0.1:8188"
+
+  # Web 应用配置
+  web_port: 7860
+  web_host: "0.0.0.0"
+  share: false
+
+  # 上传文件大小限制（MB）
+  max_file_size: 10
+
+  # 超时设置（秒）
+  execution_timeout: 300
+  connection_timeout: 10

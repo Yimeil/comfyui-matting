@@ -1,265 +1,327 @@
-# ComfyUI SAM Matting 工作流 API
+# ComfyUI 多 API 适配器
 
-基于 Segment Anything Model (SAM) 的智能图像抠图工作流
+**通用的 ComfyUI 工作流执行平台** - 支持多种 AI 图像处理任务的统一接口
 
 ## 📋 项目概述
 
-这是一个使用 ComfyUI 构建的图像抠图（Image Matting）工作流，结合了：
-- **SAM (Segment Anything Model)**: Meta 开发的强大分割模型
-- **图像形态学处理**: 优化蒙版质量
-- **边缘羽化技术**: 创建自然的抠图效果
+这是一个通用的 ComfyUI API 适配器系统，可以轻松集成和管理多个 ComfyUI 工作流。无需修改代码，只需配置文件即可添加新的工作流。
 
-## 🎯 主要特性
+### 核心特性
 
-- ✅ **智能分割**: 基于 SAM ViT-H 模型的零样本分割
-- ✅ **蒙版优化**: 形态学闭运算填充孔洞、平滑边缘
-- ✅ **边缘羽化**: 可调节的收缩和模糊处理
-- ✅ **参数灵活**: 丰富的参数配置满足不同需求
-- ✅ **API 友好**: 标准的 ComfyUI API 格式
+- 🔌 **通用适配器架构**: 支持任意 ComfyUI 工作流
+- ⚙️ **零代码配置**: 通过 YAML 配置文件管理工作流
+- 🎨 **动态 Web 界面**: 根据工作流自动生成交互界面
+- 📦 **预设管理**: 支持参数预设快速应用
+- 🔄 **可扩展设计**: 轻松添加新的工作流类型
 
-## 📁 文件说明
+## 🏗️ 架构设计
 
 ```
-.
-├── sam_mask_matting_api.json   # 工作流配置文件（核心）
-├── WORKFLOW_ANALYSIS.md        # 工作流深度分析文档
-├── NODE_PARAMETERS_GUIDE.md    # 节点参数详细调整指南
-├── workflow_api_example.py     # Python API 调用示例
-├── gradio_app.py               # Web 应用（Gradio）
-├── WEB_APPLICATION_GUIDE.md    # Web 应用开发完整指南
-├── run_web_app.sh              # Web 应用启动脚本
-├── requirements.txt            # Python 依赖
-└── README.md                   # 本文件
+ComfyUI 多 API 适配器
+├── config/              # 配置文件
+│   ├── workflows.yaml  # 工作流注册
+│   └── server.yaml     # 服务器配置
+├── workflows/          # 工作流模板
+│   └── sam_matting/   # SAM 抠图工作流
+├── core/               # 核心模块
+│   ├── workflow_manager.py
+│   ├── workflow_executor.py
+│   └── comfyui_client.py
+├── adapters/           # 工作流适配器
+│   ├── base_adapter.py
+│   └── sam_matting_adapter.py
+└── ui/                 # Web 界面
+    └── app.py
 ```
+
+详细架构设计请参考 [MULTI_API_ADAPTER_DESIGN.md](MULTI_API_ADAPTER_DESIGN.md)
 
 ## 🚀 快速开始
 
-### 1. 前置要求
+### 前置要求
 
-- ComfyUI 已安装并运行
-- 已安装以下自定义节点：
-  - `ComfyUI-Impact-Pack` (SAMLoader, SAMDetectorSegmented)
-  - `ComfyUI-SEGS` (MaskToSEGS)
-  - `comfyui_controlnet_aux` (GrowMaskWithBlur)
-  - `Morphology` 节点包
+1. **ComfyUI 已安装并运行**
+   ```bash
+   # 启动 ComfyUI (默认端口 8188)
+   python main.py
+   ```
 
-- 已下载 SAM 模型：
-  - `sam_vit_h_4b8939.pth` (推荐，最高质量)
-  - 或其他 SAM 模型变体 (vit_b, vit_l)
+2. **Python 3.8+**
+   ```bash
+   python3 --version
+   ```
 
-### 2. 基础使用
+3. **必要的 ComfyUI 自定义节点** (取决于您使用的工作流)
+   - 对于 SAM 抠图工作流：
+     - `ComfyUI-Impact-Pack`
+     - `ComfyUI-SEGS`
+     - `comfyui_controlnet_aux`
+     - Morphology 节点包
 
-#### 方式 A: 在 ComfyUI UI 中使用
-
-1. 打开 ComfyUI Web 界面
-2. 点击 "Load" 按钮
-3. 选择 `sam_mask_matting_api.json`
-4. 上传图像和蒙版
-5. 点击 "Queue Prompt" 执行
-
-#### 方式 B: 通过 API 调用
-
-```python
-from workflow_api_example import ComfyUIWorkflowClient
-
-# 创建客户端
-client = ComfyUIWorkflowClient("127.0.0.1:8188")
-
-# 加载工作流
-workflow = client.load_workflow("sam_mask_matting_api.json")
-
-# 上传图像
-image_file = client.upload_image("your_image.png")
-mask_file = client.upload_image("your_mask.png")
-
-# 更新参数
-workflow = client.update_workflow_inputs(workflow, image_file, mask_file)
-
-# 提交执行
-result = client.queue_prompt(workflow)
-```
-
-详细 API 使用请参考 `workflow_api_example.py`
-
-#### 方式 C: 使用 Web 应用（推荐给非技术用户）
-
-**最简单的使用方式！** 为业务人员提供友好的浏览器界面。
+### 安装依赖
 
 ```bash
-# 1. 安装依赖
 pip install -r requirements.txt
+```
 
-# 2. 启动 Web 应用
+### 启动 Web 应用
+
+```bash
+# 使用启动脚本（推荐）
 ./run_web_app.sh
-# 或直接运行: python gradio_app.py
 
-# 3. 在浏览器中访问
-# http://localhost:7860
+# 或直接运行
+python3 -m ui.app
 ```
 
-**Web 应用特性：**
-- 🖱️ 拖拽上传图像和蒙版
-- 🎛️ 可视化参数调节
-- 🎨 实时预览结果
-- 📥 一键下载结果
-- 🚀 快速预设（人像/产品/毛发模式）
+然后在浏览器中访问: http://localhost:7860
 
-**详细指南：** 查看 `WEB_APPLICATION_GUIDE.md` 了解如何：
-- 部署到云平台（Hugging Face Spaces、RunningHub等）
-- 自定义界面和功能
-- 集成到现有系统
+## 📖 使用指南
 
-## 🎨 工作流程
+### 通过 Web 界面使用
 
-```
-输入图像 + 蒙版提示
-    ↓
-SAM 智能分割
-    ↓
-形态学闭运算 (填充孔洞)
-    ↓
-收缩 + 模糊 (边缘羽化)
-    ↓
-应用到原图
-    ↓
-输出抠图结果
-```
+1. **选择工作流**: 从下拉菜单选择需要的处理任务
+2. **上传输入**: 根据提示上传图像或其他文件
+3. **调整参数**: 使用滑块调整参数，或点击预设快速应用
+4. **开始处理**: 点击"开始处理"按钮
+5. **查看结果**: 处理完成后在右侧查看结果
 
-详细的数据流分析请参考 `WORKFLOW_ANALYSIS.md`
+### 通过 Python API 使用
 
-## ⚙️ 核心参数
+```python
+from core.workflow_executor import WorkflowExecutor
 
-### 关键参数速查
+# 初始化执行器
+executor = WorkflowExecutor("127.0.0.1:8188")
 
-| 参数 | 位置 | 默认值 | 作用 | 调整建议 |
-|-----|------|-------|------|---------|
-| `mask_hint_threshold` | 节点 10 | 0.6 | SAM 检测阈值 | 提高精度: 0.7-0.8 |
-| `kernel_size` | 节点 43 | 6 | 形态学核大小 | 填充大孔: 8-10 |
-| `expand` | 节点 23 | -3 | 蒙版收缩量 | 避免白边: -4 或 -5 |
-| `blur_radius` | 节点 23 | 1 | 边缘模糊 | 柔和边缘: 2-3 |
+# 列出所有可用工作流
+workflows = executor.list_workflows()
+print(workflows)
 
-完整参数说明请参考 `NODE_PARAMETERS_GUIDE.md`
+# 执行工作流
+result = executor.execute(
+    workflow_id="sam_matting",
+    inputs={
+        "image": "input.jpg",
+        "mask": "mask.png"
+    },
+    params={
+        "mask_threshold": 0.7,
+        "blur_radius": 2.0
+    }
+)
 
-## 📖 使用场景与参数预设
-
-### 人像抠图（柔和边缘）
-
-```json
-{
-  "10": {"inputs": {"mask_hint_threshold": 0.7}},
-  "23": {"inputs": {"expand": -4, "blur_radius": 2.5}}
-}
+# 保存结果
+if result['success'] and result['downloaded_images']:
+    result['downloaded_images'][0]['image'].save("result.png")
 ```
 
-### 产品图（锐利边缘）
+### 使用预设
 
-```json
-{
-  "43": {"inputs": {"kernel_size": 10}},
-  "23": {"inputs": {"expand": -1, "blur_radius": 0.3}}
-}
+```python
+# 使用预设配置执行
+result = executor.execute_with_preset(
+    workflow_id="sam_matting",
+    inputs={
+        "image": "input.jpg",
+        "mask": "mask.png"
+    },
+    preset_name="portrait"  # 人像模式
+)
 ```
 
-### 毛发细节保留
+## 🔧 添加新工作流
 
-```json
-{
-  "15": {"inputs": {"drop_size": 3}},
-  "23": {"inputs": {"expand": -1, "blur_radius": 1.5, "lerp_alpha": 0.8}}
-}
+只需 4 步即可添加新的工作流：
+
+### 1. 创建工作流目录
+
+```bash
+mkdir -p workflows/my_workflow
 ```
 
-更多预设请参考 `workflow_api_example.py` 中的 `WorkflowParameterPresets` 类
+### 2. 导出 ComfyUI 工作流
 
-## 🛠️ 常见问题
+在 ComfyUI 中：
+- 构建您的工作流
+- 点击 "Save (API Format)"
+- 保存为 `workflows/my_workflow/workflow.json`
 
-### Q: 结果有白边怎么办？
+### 3. 创建参数定义
 
-A: 增加收缩量，将节点 23 的 `expand` 改为 -4 或 -5
+创建 `workflows/my_workflow/schema.yaml`:
 
-### Q: 边缘太硬怎么办？
+```yaml
+workflow_id: my_workflow
+version: "1.0.0"
+name: "我的工作流"
+description: "工作流描述"
 
-A: 增加模糊半径，将节点 23 的 `blur_radius` 改为 2-3
+inputs:
+  - name: input_image
+    type: image
+    required: true
+    label: "输入图像"
+    node_id: "1"
+    node_param: "image"
 
-### Q: 分割不准确怎么办？
+parameters:
+  - name: strength
+    type: float
+    label: "强度"
+    default: 0.5
+    min: 0.0
+    max: 1.0
+    step: 0.1
+    node_id: "3"
+    node_param: "denoise"
+    category: "基础参数"
 
-A:
-- 检查输入蒙版质量
-- 提高节点 10 的 `mask_hint_threshold` 到 0.7-0.8
-- 尝试 `detection_hint: "center-2"` 或 `"center-3"`
+presets:
+  default:
+    name: "默认"
+    icon: "⚡"
+    params:
+      strength: 0.5
 
-### Q: 蒙版有小孔怎么办？
+outputs:
+  - name: result
+    type: image
+    node_id: "9"
+```
 
-A: 增加节点 43 的 `kernel_size` 到 8-10，使用 `operation: "close"`
+### 4. 创建适配器并注册
 
-### Q: 处理速度慢怎么办？
+创建 `adapters/my_workflow_adapter.py`:
 
-A:
-- 使用较小的 SAM 模型 (sam_vit_b)
-- 减小形态学 `kernel_size`
-- 使用 `detection_hint: "center-1"`
+```python
+from adapters.base_adapter import BaseAdapter
 
-## 📊 节点说明
+class MyWorkflowAdapter(BaseAdapter):
+    def validate_inputs(self, inputs):
+        if 'input_image' not in inputs:
+            raise ValueError("缺少输入图像")
+        return True
 
-| 节点 ID | 类型 | 功能 |
-|--------|------|------|
-| 2 | LoadImage | 加载原始图像和蒙版（输出0: 图像，输出1: 蒙版） |
-| 20 | SAMLoader | 加载 SAM 模型 |
-| 15 | MaskToSEGS | 蒙版转换为分割段 |
-| 10 | SAMDetectorSegmented | SAM 智能分割 |
-| 44 | MaskToImage | 蒙版转图像 |
-| 43 | Morphology | 形态学处理（闭运算） |
-| 45 | ImageToMask | 图像转蒙版 |
-| 23 | GrowMaskWithBlur | 收缩+模糊处理 |
-| 21 | ETN_ApplyMaskToImage | 应用蒙版到图像 |
-| 22 | PreviewImage | 预览结果 |
+    def prepare_workflow(self, workflow, inputs, params):
+        workflow['1']['inputs']['image'] = inputs['input_image']
+        workflow['3']['inputs']['denoise'] = params.get('strength', 0.5)
+        return workflow
 
-详细的节点分析请参考 `WORKFLOW_ANALYSIS.md`
+    def process_outputs(self, outputs):
+        return {
+            'success': True,
+            'images': outputs.get('9', {}).get('images', [])
+        }
+```
 
-## 🔍 深入学习
+在 `config/workflows.yaml` 注册:
 
-1. **工作流架构与原理**: 阅读 `WORKFLOW_ANALYSIS.md`
-2. **参数调优指南**: 阅读 `NODE_PARAMETERS_GUIDE.md`
-3. **API 编程**: 参考 `workflow_api_example.py`
+```yaml
+workflows:
+  my_workflow:
+    name: "我的工作流"
+    description: "工作流描述"
+    adapter: "adapters.my_workflow_adapter.MyWorkflowAdapter"
+    workflow_file: "workflows/my_workflow/workflow.json"
+    schema_file: "workflows/my_workflow/schema.yaml"
+    enabled: true
+    icon: "✨"
+    category: "自定义"
+```
 
-## 💡 优化建议
+重启应用即可看到新工作流！
 
-### 提高质量
-- 使用高质量的输入蒙版
-- 提高 SAM 检测阈值
-- 增加形态学处理强度
+## 📦 内置工作流
 
-### 提高速度
-- 使用较小的 SAM 模型
-- 减少形态学迭代
-- 降低图像分辨率
+### SAM 智能抠图 (sam_matting)
 
-### 批量处理
-- 使用 `workflow_api_example.py` 中的批量处理示例
-- 可并行处理多张图像
+使用 Segment Anything Model 进行智能图像抠图。
+
+**输入:**
+- 原始图像
+- 蒙版图像
+
+**参数:**
+- 检测阈值 (0.1-1.0)
+- 边缘模糊 (0-5)
+- 形态学核大小 (2-15)
+- 蒙版扩展 (-10 到 10)
+
+**预设:**
+- 👤 人像模式
+- 📦 产品模式
+- 💇 毛发模式
+- ⭐ 高质量
+- ⚡ 快速模式
+
+详细说明请参考:
+- [工作流分析](WORKFLOW_ANALYSIS.md)
+- [参数调优指南](NODE_PARAMETERS_GUIDE.md)
+
+## 🛠️ 配置
+
+### 服务器配置 (config/server.yaml)
+
+```yaml
+server:
+  comfyui_url: "127.0.0.1:8188"  # ComfyUI 服务器地址
+  web_port: 7860                  # Web 界面端口
+  web_host: "0.0.0.0"            # Web 界面地址
+  share: false                    # 是否创建公共链接
+  max_file_size: 10               # 最大文件大小 (MB)
+  execution_timeout: 300          # 执行超时 (秒)
+```
+
+### 工作流配置 (config/workflows.yaml)
+
+所有工作流通过此文件注册和管理。
+
+## 📚 文档
+
+- [架构设计文档](MULTI_API_ADAPTER_DESIGN.md) - 详细的系统架构说明
+- [工作流分析](WORKFLOW_ANALYSIS.md) - SAM 抠图工作流深度分析
+- [参数调优指南](NODE_PARAMETERS_GUIDE.md) - 节点参数详细说明
+- [Web 应用指南](WEB_APPLICATION_GUIDE.md) - Web 应用开发指南
+
+## 🔍 故障排查
+
+### ComfyUI 连接失败
+
+```bash
+# 检查 ComfyUI 是否运行
+curl http://127.0.0.1:8188/system_stats
+
+# 如果 ComfyUI 在其他端口，修改 config/server.yaml
+```
+
+### 工作流未显示
+
+1. 检查 `config/workflows.yaml` 中是否启用: `enabled: true`
+2. 检查工作流文件路径是否正确
+3. 查看终端输出的错误信息
+
+### 缺少自定义节点
+
+根据工作流要求安装相应的 ComfyUI 自定义节点包。
 
 ## 🤝 贡献
 
-欢迎提交 Issue 和 Pull Request！
+欢迎贡献新的工作流适配器！
+
+1. Fork 项目
+2. 创建工作流适配器
+3. 提交 Pull Request
 
 ## 📄 许可
 
-本项目遵循 MIT 许可证
+MIT License
 
-## 🔗 相关资源
+## 🌟 相关项目
 
-- [ComfyUI](https://github.com/comfyanonymous/ComfyUI)
-- [Segment Anything (SAM)](https://github.com/facebookresearch/segment-anything)
-- [ComfyUI-Impact-Pack](https://github.com/ltdrdata/ComfyUI-Impact-Pack)
-
-## 📝 更新日志
-
-### v1.0.0 (2025-11-07)
-- ✨ 初始版本
-- ✅ 完整的工作流配置
-- 📚 详细的文档和示例
-- 🎯 参数预设和调优指南
+- [ComfyUI](https://github.com/comfyanonymous/ComfyUI) - 强大的 Stable Diffusion GUI
+- [Segment Anything](https://github.com/facebookresearch/segment-anything) - Meta 的通用分割模型
 
 ---
 
-**提示**: 如需技术支持，请参考文档或提交 Issue
+**提示**: 这是一个通用框架，您可以基于它构建任何 ComfyUI 工作流的 API 服务！
