@@ -32,6 +32,28 @@ ComfyUI 多 API 适配器
 │   └── sam_matting_adapter.py
 └── ui/                 # Web 界面
     └── app.py
+.
+├── sam_mask_matting_api.json   # 工作流配置文件（核心）
+├── WORKFLOW_ANALYSIS.md        # 工作流深度分析文档
+├── NODE_PARAMETERS_GUIDE.md    # 节点参数详细调整指南
+│
+├── workflow_api_example.py     # Python API 调用示例
+│
+├── gradio_app.py               # Web 应用（Gradio - Python）
+├── WEB_APPLICATION_GUIDE.md    # Gradio Web 应用开发完整指南
+├── run_web_app.sh              # Gradio 应用启动脚本
+├── requirements.txt            # Python 依赖
+│
+├── pom.xml                     # Java 项目 Maven 配置
+├── run_java_app.sh             # Java 应用启动脚本 (Linux/macOS)
+├── run_java_app.bat            # Java 应用启动脚本 (Windows)
+├── JAVA_WEB_APP_GUIDE.md       # Java Web 应用完整指南
+├── src/                        # Java 源代码目录
+│   └── main/
+│       ├── java/               # Java 代码
+│       └── resources/          # 资源文件（配置、HTML界面）
+│
+└── README.md                   # 本文件
 ```
 
 详细架构设计请参考 [MULTI_API_ADAPTER_DESIGN.md](MULTI_API_ADAPTER_DESIGN.md)
@@ -128,6 +150,55 @@ result = executor.execute_with_preset(
     },
     preset_name="portrait"  # 人像模式
 )
+#### 方式 D: 使用 Java + HTML Web 应用（轻量级，推荐）
+
+**🎯 最轻量级的 Web 方案！** 无需安装大量 Python 依赖，只需要 Java 运行环境。
+
+```bash
+# 1. 确保安装了 Java 17+
+java -version
+
+# 2. 启动 Web 应用
+./run_java_app.sh      # Linux/macOS
+# 或
+run_java_app.bat       # Windows
+
+# 3. 在浏览器中访问
+# http://localhost:8080
+```
+
+**Java Web 应用特性：**
+- ✅ **零 Python 依赖** - 只需要 Java 运行环境
+- ✅ **轻量级部署** - 单个 JAR 文件，约 30MB
+- ✅ **高性能** - Spring Boot 提供的企业级性能
+- ✅ **现代化界面** - 响应式设计，支持移动端
+- ✅ **易于维护** - 跨平台，易于部署和扩展
+- 🖱️ 拖拽上传图像和蒙版
+- 🎛️ 可视化参数调节
+- 🎨 实时预览结果
+- 📥 一键下载结果
+- 🚀 快速预设（人像/产品/毛发模式）
+
+**详细指南：** 查看 `JAVA_WEB_APP_GUIDE.md` 了解：
+- 安装和配置
+- API 接口文档
+- 部署到生产环境
+- 自定义开发
+
+## 🎨 工作流程
+
+```
+输入图像 + 蒙版提示
+    ↓
+SAM 智能分割
+    ↓
+形态学闭运算 (填充孔洞)
+    ↓
+收缩 + 模糊 (边缘羽化)
+    ↓
+应用到原图
+    ↓
+输出抠图结果
 ```
 
 ## 🔧 添加新工作流

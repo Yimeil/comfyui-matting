@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能图像抠图 - ComfyUI Matting</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .status-bar {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #dc3545;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #28a745;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .main-content {
+            padding: 30px;
+        }
+
+        .upload-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .upload-box {
+            border: 3px dashed #dee2e6;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-box:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .upload-box.has-file {
+            border-color: #28a745;
+            border-style: solid;
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+            color: #6c757d;
+        }
+
+        .upload-box.has-file .upload-icon {
+            color: #28a745;
+        }
+
+        .upload-text {
+            color: #6c757d;
+            font-size: 1.1em;
+        }
+
+        .preview-img {
+            max-width: 100%;
+            max-height: 200px;
+            margin-top: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .params-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .params-section h3 {
+            margin-bottom: 20px;
+            color: #495057;
+            font-size: 1.3em;
+        }
+
+        .presets {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .preset-btn {
+            padding: 10px 20px;
+            border: 2px solid #dee2e6;
+            background: white;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.95em;
+            font-weight: 500;
+        }
+
+        .preset-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .preset-btn.active {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+        }
+
+        .param-group {
+            margin-bottom: 20px;
+        }
+
+        .param-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #495057;
+            font-weight: 500;
+        }
+
+        .param-control {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: #dee2e6;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+
+        .param-value {
+            min-width: 60px;
+            padding: 8px 15px;
+            background: white;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .result-section {
+            margin-top: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+        }
+
+        .result-section h3 {
+            margin-bottom: 20px;
+            color: #495057;
+        }
+
+        .result-image {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            display: block;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #dee2e6;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .progress-bar.show {
+            display: block;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s;
+            animation: progress-animation 1.5s infinite;
+        }
+
+        @keyframes progress-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        @media (max-width: 768px) {
+            .upload-section {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 智能图像抠图</h1>
+            <p>基于 SAM 模型的专业级抠图解决方案</p>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">检查服务器连接中...</span>
+            </div>
+            <div>
+                <small>轻量级 Java + HTML 方案</small>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div id="messageBox" class="message"></div>
+
+            <div class="upload-section">
+                <div class="upload-box" id="imageUploadBox" onclick="document.getElementById('imageInput').click()">
+                    <div class="upload-icon" id="imageIcon">📷</div>
+                    <div class="upload-text">点击上传原始图像</div>
+                    <img id="imagePreview" class="preview-img" style="display: none;">
+                    <input type="file" id="imageInput" accept="image/*" onchange="handleImageUpload(event, 'image')">
+                </div>
+
+                <div class="upload-box" id="maskUploadBox" onclick="document.getElementById('maskInput').click()">
+                    <div class="upload-icon" id="maskIcon">🎭</div>
+                    <div class="upload-text">点击上传蒙版图像</div>
+                    <img id="maskPreview" class="preview-img" style="display: none;">
+                    <input type="file" id="maskInput" accept="image/*" onchange="handleImageUpload(event, 'mask')">
+                </div>
+            </div>
+
+            <div class="params-section">
+                <h3>⚙️ 参数设置</h3>
+
+                <div class="presets">
+                    <button class="preset-btn active" onclick="applyPreset('default')">默认</button>
+                    <button class="preset-btn" onclick="applyPreset('portrait')">人像抠图</button>
+                    <button class="preset-btn" onclick="applyPreset('product')">产品图</button>
+                    <button class="preset-btn" onclick="applyPreset('hair')">毛发细节</button>
+                </div>
+
+                <div class="param-group">
+                    <label>SAM 检测阈值 (越高越精确)</label>
+                    <div class="param-control">
+                        <input type="range" id="thresholdSlider" min="0" max="100" value="60" oninput="updateParam('threshold', this.value)">
+                        <span class="param-value" id="thresholdValue">0.60</span>
+                    </div>
+                </div>
+
+                <div class="param-group">
+                    <label>形态学核大小 (填充孔洞)</label>
+                    <div class="param-control">
+                        <input type="range" id="kernelSlider" min="2" max="15" value="6" oninput="updateParam('kernel', this.value)">
+                        <span class="param-value" id="kernelValue">6</span>
+                    </div>
+                </div>
+
+                <div class="param-group">
+                    <label>蒙版收缩 (避免白边)</label>
+                    <div class="param-control">
+                        <input type="range" id="expandSlider" min="-10" max="0" value="-3" oninput="updateParam('expand', this.value)">
+                        <span class="param-value" id="expandValue">-3</span>
+                    </div>
+                </div>
+
+                <div class="param-group">
+                    <label>边缘模糊 (柔和边缘)</label>
+                    <div class="param-control">
+                        <input type="range" id="blurSlider" min="0" max="50" value="10" oninput="updateParam('blur', this.value)">
+                        <span class="param-value" id="blurValue">1.0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="progress-bar" id="progressBar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-primary" id="processBtn" onclick="processImage()" disabled>
+                    <span>🚀</span>
+                    <span>开始处理</span>
+                </button>
+            </div>
+
+            <div class="result-section" id="resultSection">
+                <h3>✨ 处理结果</h3>
+                <img id="resultImage" class="result-image">
+                <div class="action-buttons" style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="downloadResult()">
+                        <span>📥</span>
+                        <span>下载结果</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="resetForm()">
+                        <span>🔄</span>
+                        <span>重新开始</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let imageFile = null;
+        let maskFile = null;
+        let currentPreset = 'default';
+        let currentPromptId = null;
+        let currentResultFilename = null;
+        let currentResultSubfolder = '';
+
+        // 参数配置
+        const params = {
+            threshold: 0.6,
+            kernel: 6,
+            expand: -3,
+            blur: 1.0
+        };
+
+        // 预设配置
+        const presets = {
+            default: { threshold: 0.6, kernel: 6, expand: -3, blur: 1.0 },
+            portrait: { threshold: 0.7, kernel: 6, expand: -4, blur: 2.5 },
+            product: { threshold: 0.6, kernel: 10, expand: -1, blur: 0.3 },
+            hair: { threshold: 0.6, kernel: 6, expand: -1, blur: 1.5 }
+        };
+
+        // 检查服务器状态
+        async function checkServerStatus() {
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+
+                const statusDot = document.getElementById('statusDot');
+                const statusText = document.getElementById('statusText');
+
+                if (data.comfyui_connected) {
+                    statusDot.classList.add('connected');
+                    statusText.textContent = 'ComfyUI 服务器已连接';
+                } else {
+                    statusDot.classList.remove('connected');
+                    statusText.textContent = 'ComfyUI 服务器未连接';
+                    showMessage('警告：ComfyUI 服务器未连接，请确保 ComfyUI 正在运行', 'error');
+                }
+            } catch (error) {
+                const statusDot = document.getElementById('statusDot');
+                const statusText = document.getElementById('statusText');
+                statusDot.classList.remove('connected');
+                statusText.textContent = '无法连接到后端服务';
+                showMessage('错误：无法连接到后端服务', 'error');
+            }
+        }
+
+        // 处理图像上传
+        function handleImageUpload(event, type) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                if (type === 'image') {
+                    imageFile = file;
+                    document.getElementById('imagePreview').src = e.target.result;
+                    document.getElementById('imagePreview').style.display = 'block';
+                    document.getElementById('imageUploadBox').classList.add('has-file');
+                    document.getElementById('imageIcon').textContent = '✓';
+                } else {
+                    maskFile = file;
+                    document.getElementById('maskPreview').src = e.target.result;
+                    document.getElementById('maskPreview').style.display = 'block';
+                    document.getElementById('maskUploadBox').classList.add('has-file');
+                    document.getElementById('maskIcon').textContent = '✓';
+                }
+
+                // 检查是否可以开始处理
+                if (imageFile && maskFile) {
+                    document.getElementById('processBtn').disabled = false;
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 更新参数
+        function updateParam(param, value) {
+            switch(param) {
+                case 'threshold':
+                    params.threshold = value / 100;
+                    document.getElementById('thresholdValue').textContent = params.threshold.toFixed(2);
+                    break;
+                case 'kernel':
+                    params.kernel = parseInt(value);
+                    document.getElementById('kernelValue').textContent = value;
+                    break;
+                case 'expand':
+                    params.expand = parseInt(value);
+                    document.getElementById('expandValue').textContent = value;
+                    break;
+                case 'blur':
+                    params.blur = value / 10;
+                    document.getElementById('blurValue').textContent = params.blur.toFixed(1);
+                    break;
+            }
+        }
+
+        // 应用预设
+        function applyPreset(preset) {
+            currentPreset = preset;
+
+            // 更新按钮状态
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // 应用参数
+            const config = presets[preset];
+            params.threshold = config.threshold;
+            params.kernel = config.kernel;
+            params.expand = config.expand;
+            params.blur = config.blur;
+
+            // 更新 UI
+            document.getElementById('thresholdSlider').value = config.threshold * 100;
+            document.getElementById('thresholdValue').textContent = config.threshold.toFixed(2);
+
+            document.getElementById('kernelSlider').value = config.kernel;
+            document.getElementById('kernelValue').textContent = config.kernel;
+
+            document.getElementById('expandSlider').value = config.expand;
+            document.getElementById('expandValue').textContent = config.expand;
+
+            document.getElementById('blurSlider').value = config.blur * 10;
+            document.getElementById('blurValue').textContent = config.blur.toFixed(1);
+        }
+
+        // 处理图像
+        async function processImage() {
+            if (!imageFile || !maskFile) {
+                showMessage('请上传图像和蒙版', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', imageFile);
+            formData.append('mask', maskFile);
+            formData.append('maskHintThreshold', params.threshold);
+            formData.append('kernelSize', params.kernel);
+            formData.append('expand', params.expand);
+            formData.append('blurRadius', params.blur);
+            formData.append('preset', currentPreset);
+
+            document.getElementById('processBtn').disabled = true;
+            document.getElementById('progressBar').classList.add('show');
+            document.getElementById('resultSection').classList.remove('show');
+            showMessage('正在上传图像并提交处理任务...', 'info');
+
+            try {
+                const response = await fetch('/api/matting', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentPromptId = data.prompt_id;
+                    showMessage('任务已提交，正在处理中...', 'info');
+                    pollResult();
+                } else {
+                    showMessage('错误: ' + data.error, 'error');
+                    document.getElementById('processBtn').disabled = false;
+                    document.getElementById('progressBar').classList.remove('show');
+                }
+            } catch (error) {
+                showMessage('网络错误: ' + error.message, 'error');
+                document.getElementById('processBtn').disabled = false;
+                document.getElementById('progressBar').classList.remove('show');
+            }
+        }
+
+        // 轮询结果
+        async function pollResult() {
+            if (!currentPromptId) return;
+
+            try {
+                const response = await fetch(`/api/result/${currentPromptId}`);
+                const data = await response.json();
+
+                if (data.success && data.status === 'completed') {
+                    currentResultFilename = data.filename;
+                    currentResultSubfolder = data.subfolder || '';
+
+                    const imageUrl = `/api/download/${data.filename}?subfolder=${currentResultSubfolder}`;
+                    document.getElementById('resultImage').src = imageUrl;
+                    document.getElementById('resultSection').classList.add('show');
+                    document.getElementById('progressBar').classList.remove('show');
+                    document.getElementById('processBtn').disabled = false;
+                    showMessage('处理完成！', 'success');
+                } else if (data.success && data.status === 'processing') {
+                    // 继续轮询
+                    setTimeout(pollResult, 1000);
+                } else {
+                    showMessage('错误: ' + (data.error || '未知错误'), 'error');
+                    document.getElementById('progressBar').classList.remove('show');
+                    document.getElementById('processBtn').disabled = false;
+                }
+            } catch (error) {
+                showMessage('网络错误: ' + error.message, 'error');
+                document.getElementById('progressBar').classList.remove('show');
+                document.getElementById('processBtn').disabled = false;
+            }
+        }
+
+        // 下载结果
+        function downloadResult() {
+            if (currentResultFilename) {
+                const url = `/api/download/${currentResultFilename}?subfolder=${currentResultSubfolder}`;
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'matting_result.png';
+                a.click();
+            }
+        }
+
+        // 重置表单
+        function resetForm() {
+            imageFile = null;
+            maskFile = null;
+            currentPromptId = null;
+            currentResultFilename = null;
+            currentResultSubfolder = '';
+
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('maskPreview').style.display = 'none';
+            document.getElementById('imageUploadBox').classList.remove('has-file');
+            document.getElementById('maskUploadBox').classList.remove('has-file');
+            document.getElementById('imageIcon').textContent = '📷';
+            document.getElementById('maskIcon').textContent = '🎭';
+            document.getElementById('resultSection').classList.remove('show');
+            document.getElementById('processBtn').disabled = true;
+            document.getElementById('imageInput').value = '';
+            document.getElementById('maskInput').value = '';
+
+            hideMessage();
+            applyPreset('default');
+        }
+
+        // 显示消息
+        function showMessage(message, type) {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = message;
+            messageBox.className = `message ${type} show`;
+        }
+
+        // 隐藏消息
+        function hideMessage() {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.classList.remove('show');
+        }
+
+        // 页面加载时检查服务器状态
+        window.onload = function() {
+            checkServerStatus();
+            setInterval(checkServerStatus, 10000); // 每10秒检查一次
+        };
+    </script>
+</body>
+</html>
