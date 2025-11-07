@@ -8,15 +8,6 @@
       "title": "加载图像"
     }
   },
-  "3": {
-    "inputs": {
-      "image": "clipspace/clipspace-mask-71685336.29999995.png [input]"
-    },
-    "class_type": "LoadImage",
-    "_meta": {
-      "title": "加载蒙版"
-    }
-  },
   "10": {
     "inputs": {
       "detection_hint": "center-1",
@@ -51,7 +42,7 @@
       "drop_size": 10,
       "contour_fill": false,
       "mask": [
-        "3",
+        "2",
         1
       ]
     },
