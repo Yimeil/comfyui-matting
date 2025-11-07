@@ -171,8 +171,7 @@ A:
 
 | 节点 ID | 类型 | 功能 |
 |--------|------|------|
-| 2 | LoadImage | 加载原始图像 |
-| 3 | LoadImage | 加载蒙版提示 |
+| 2 | LoadImage | 加载原始图像和蒙版（输出0: 图像，输出1: 蒙版） |
 | 20 | SAMLoader | 加载 SAM 模型 |
 | 15 | MaskToSEGS | 蒙版转换为分割段 |
 | 10 | SAMDetectorSegmented | SAM 智能分割 |
