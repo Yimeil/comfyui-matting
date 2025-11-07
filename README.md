@@ -1,6 +1,6 @@
 # ComfyUI 多 API 适配器
 
-**通用的 ComfyUI 工作流执行平台** - 支持多种 AI 图像处理任务的统一接口
+**通用的 ComfyUI 工作流执行平台** - 支持多种 AI 图像处理任务的统一 API 接口
 
 ## 📋 项目概述
 
@@ -10,9 +10,9 @@
 
 - 🔌 **通用适配器架构**: 支持任意 ComfyUI 工作流
 - ⚙️ **零代码配置**: 通过 YAML 配置文件管理工作流
-- 🎨 **动态 Web 界面**: 根据工作流自动生成交互界面
 - 📦 **预设管理**: 支持参数预设快速应用
 - 🔄 **可扩展设计**: 轻松添加新的工作流类型
+- 🐍 **Python API**: 简洁的 Python API 接口
 
 ## 🏗️ 架构设计
 
@@ -27,33 +27,9 @@ ComfyUI 多 API 适配器
 │   ├── workflow_manager.py
 │   ├── workflow_executor.py
 │   └── comfyui_client.py
-├── adapters/           # 工作流适配器
-│   ├── base_adapter.py
-│   └── sam_matting_adapter.py
-└── ui/                 # Web 界面
-    └── app.py
-.
-├── sam_mask_matting_api.json   # 工作流配置文件（核心）
-├── WORKFLOW_ANALYSIS.md        # 工作流深度分析文档
-├── NODE_PARAMETERS_GUIDE.md    # 节点参数详细调整指南
-│
-├── workflow_api_example.py     # Python API 调用示例
-│
-├── gradio_app.py               # Web 应用（Gradio - Python）
-├── WEB_APPLICATION_GUIDE.md    # Gradio Web 应用开发完整指南
-├── run_web_app.sh              # Gradio 应用启动脚本
-├── requirements.txt            # Python 依赖
-│
-├── pom.xml                     # Java 项目 Maven 配置
-├── run_java_app.sh             # Java 应用启动脚本 (Linux/macOS)
-├── run_java_app.bat            # Java 应用启动脚本 (Windows)
-├── JAVA_WEB_APP_GUIDE.md       # Java Web 应用完整指南
-├── src/                        # Java 源代码目录
-│   └── main/
-│       ├── java/               # Java 代码
-│       └── resources/          # 资源文件（配置、HTML界面）
-│
-└── README.md                   # 本文件
+└── adapters/           # 工作流适配器
+    ├── base_adapter.py
+    └── sam_matting_adapter.py
 ```
 
 详细架构设计请参考 [MULTI_API_ADAPTER_DESIGN.md](MULTI_API_ADAPTER_DESIGN.md)
@@ -86,27 +62,7 @@ ComfyUI 多 API 适配器
 pip install -r requirements.txt
 ```
 
-### 启动 Web 应用
-
-```bash
-# 使用启动脚本（推荐）
-./run_web_app.sh
-
-# 或直接运行
-python3 -m ui.app
-```
-
-然后在浏览器中访问: http://localhost:7860
-
 ## 📖 使用指南
-
-### 通过 Web 界面使用
-
-1. **选择工作流**: 从下拉菜单选择需要的处理任务
-2. **上传输入**: 根据提示上传图像或其他文件
-3. **调整参数**: 使用滑块调整参数，或点击预设快速应用
-4. **开始处理**: 点击"开始处理"按钮
-5. **查看结果**: 处理完成后在右侧查看结果
 
 ### 通过 Python API 使用
 
@@ -150,40 +106,7 @@ result = executor.execute_with_preset(
     },
     preset_name="portrait"  # 人像模式
 )
-#### 方式 D: 使用 Java + HTML Web 应用（轻量级，推荐）
-
-**🎯 最轻量级的 Web 方案！** 无需安装大量 Python 依赖，只需要 Java 运行环境。
-
-```bash
-# 1. 确保安装了 Java 17+
-java -version
-
-# 2. 启动 Web 应用
-./run_java_app.sh      # Linux/macOS
-# 或
-run_java_app.bat       # Windows
-
-# 3. 在浏览器中访问
-# http://localhost:8080
 ```
-
-**Java Web 应用特性：**
-- ✅ **零 Python 依赖** - 只需要 Java 运行环境
-- ✅ **轻量级部署** - 单个 JAR 文件，约 30MB
-- ✅ **高性能** - Spring Boot 提供的企业级性能
-- ✅ **现代化界面** - 响应式设计，支持移动端
-- ✅ **易于维护** - 跨平台，易于部署和扩展
-- 🖱️ 拖拽上传图像和蒙版
-- 🎛️ 可视化参数调节
-- 🎨 实时预览结果
-- 📥 一键下载结果
-- 🚀 快速预设（人像/产品/毛发模式）
-
-**详细指南：** 查看 `JAVA_WEB_APP_GUIDE.md` 了解：
-- 安装和配置
-- API 接口文档
-- 部署到生产环境
-- 自定义开发
 
 ## 🎨 工作流程
 
@@ -301,7 +224,7 @@ workflows:
     category: "自定义"
 ```
 
-重启应用即可看到新工作流！
+重启应用即可使用新工作流！
 
 ## 📦 内置工作流
 
@@ -337,10 +260,6 @@ workflows:
 ```yaml
 server:
   comfyui_url: "127.0.0.1:8188"  # ComfyUI 服务器地址
-  web_port: 7860                  # Web 界面端口
-  web_host: "0.0.0.0"            # Web 界面地址
-  share: false                    # 是否创建公共链接
-  max_file_size: 10               # 最大文件大小 (MB)
   execution_timeout: 300          # 执行超时 (秒)
 ```
 
@@ -353,7 +272,6 @@ server:
 - [架构设计文档](MULTI_API_ADAPTER_DESIGN.md) - 详细的系统架构说明
 - [工作流分析](WORKFLOW_ANALYSIS.md) - SAM 抠图工作流深度分析
 - [参数调优指南](NODE_PARAMETERS_GUIDE.md) - 节点参数详细说明
-- [Web 应用指南](WEB_APPLICATION_GUIDE.md) - Web 应用开发指南
 
 ## 🔍 故障排查
 
