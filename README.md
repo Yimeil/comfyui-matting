@@ -25,6 +25,10 @@
 ├── WORKFLOW_ANALYSIS.md        # 工作流深度分析文档
 ├── NODE_PARAMETERS_GUIDE.md    # 节点参数详细调整指南
 ├── workflow_api_example.py     # Python API 调用示例
+├── gradio_app.py               # Web 应用（Gradio）
+├── WEB_APPLICATION_GUIDE.md    # Web 应用开发完整指南
+├── run_web_app.sh              # Web 应用启动脚本
+├── requirements.txt            # Python 依赖
 └── README.md                   # 本文件
 ```
 
@@ -76,6 +80,34 @@ result = client.queue_prompt(workflow)
 ```
 
 详细 API 使用请参考 `workflow_api_example.py`
+
+#### 方式 C: 使用 Web 应用（推荐给非技术用户）
+
+**最简单的使用方式！** 为业务人员提供友好的浏览器界面。
+
+```bash
+# 1. 安装依赖
+pip install -r requirements.txt
+
+# 2. 启动 Web 应用
+./run_web_app.sh
+# 或直接运行: python gradio_app.py
+
+# 3. 在浏览器中访问
+# http://localhost:7860
+```
+
+**Web 应用特性：**
+- 🖱️ 拖拽上传图像和蒙版
+- 🎛️ 可视化参数调节
+- 🎨 实时预览结果
+- 📥 一键下载结果
+- 🚀 快速预设（人像/产品/毛发模式）
+
+**详细指南：** 查看 `WEB_APPLICATION_GUIDE.md` 了解如何：
+- 部署到云平台（Hugging Face Spaces、RunningHub等）
+- 自定义界面和功能
+- 集成到现有系统
 
 ## 🎨 工作流程
 
