@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ComfyUI 智能抠图 - Claude Skills</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        #app {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+
+        .header .tech-stack {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-top: 10px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 20px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .status-badge.online {
+            background: rgba(76, 175, 80, 0.3);
+            color: white;
+        }
+
+        .status-badge.offline {
+            background: rgba(244, 67, 54, 0.3);
+            color: white;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .skill-selector {
+            margin-bottom: 30px;
+        }
+
+        .skill-selector h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .skill-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .skill-btn {
+            padding: 15px 30px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1rem;
+        }
+
+        .skill-btn:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+
+        .skill-btn.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #fafafa;
+            margin-bottom: 30px;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #e8e8ff;
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .params-section {
+            margin-bottom: 30px;
+        }
+
+        .params-section h3 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .param-group {
+            margin-bottom: 20px;
+        }
+
+        .param-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .param-group input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+        }
+
+        .param-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .param-value {
+            display: inline-block;
+            margin-left: 10px;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f0f0ff;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result-section {
+            margin-top: 30px;
+        }
+
+        .result-image {
+            max-width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .result-info {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+
+        .result-info p {
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="header">
+            <h1>🎨 ComfyUI 智能抠图服务</h1>
+            <p class="subtitle">基于 Claude Skills 的智能图像处理</p>
+            <p class="tech-stack">Vue 3 + Spring Boot + Claude Skills + ComfyUI API</p>
+            <span class="status-badge" :class="serverStatus ? 'online' : 'offline'">
+                {{ serverStatus ? '🟢 服务在线' : '🔴 服务离线' }}
+            </span>
+        </div>
+
+        <div class="card">
+            <!-- Skill 选择器 -->
+            <div class="skill-selector">
+                <h3>选择功能</h3>
+                <div class="skill-buttons">
+                    <button
+                        class="skill-btn"
+                        :class="{ active: selectedSkill === 'matting' }"
+                        @click="selectSkill('matting')">
+                        🎯 智能抠图
+                    </button>
+                    <!-- 未来可以添加更多 skills -->
+                    <button class="skill-btn" disabled style="opacity: 0.5;">
+                        ✨ 图像增强 (即将推出)
+                    </button>
+                    <button class="skill-btn" disabled style="opacity: 0.5;">
+                        🎨 风格转换 (即将推出)
+                    </button>
+                </div>
+            </div>
+
+            <!-- 图片上传区域 -->
+            <div
+                class="upload-area"
+                :class="{ dragover: isDragging }"
+                @click="triggerFileInput"
+                @dragover.prevent="isDragging = true"
+                @dragleave.prevent="isDragging = false"
+                @drop.prevent="handleFileDrop">
+                <div v-if="!previewUrl" class="upload-icon">📤</div>
+                <div v-if="!previewUrl">
+                    <p style="font-size: 1.2rem; color: #666; margin-bottom: 10px;">
+                        点击或拖拽上传图片
+                    </p>
+                    <p style="font-size: 0.9rem; color: #999;">
+                        支持 JPG, PNG 格式
+                    </p>
+                </div>
+                <img v-if="previewUrl" :src="previewUrl" class="preview-image" alt="预览">
+                <input
+                    type="file"
+                    ref="fileInput"
+                    @change="handleFileSelect"
+                    accept="image/*"
+                    style="display: none;">
+            </div>
+
+            <!-- 参数调整 -->
+            <div v-if="selectedSkill === 'matting' && selectedFile" class="params-section">
+                <h3>⚙️ 参数调整</h3>
+
+                <div class="param-group">
+                    <label>
+                        SAM 检测阈值
+                        <span class="param-value">{{ params.threshold }}</span>
+                    </label>
+                    <input
+                        type="range"
+                        v-model.number="params.threshold"
+                        min="0"
+                        max="1"
+                        step="0.1">
+                    <p style="font-size: 0.85rem; color: #999; margin-top: 5px;">
+                        较低的值会检测更多对象，较高的值更精确
+                    </p>
+                </div>
+
+                <div class="param-group">
+                    <label>
+                        <input type="checkbox" v-model="params.alphaMatting">
+                        启用边缘优化 (Alpha Matting)
+                    </label>
+                </div>
+
+                <div v-if="params.alphaMatting" style="margin-left: 30px;">
+                    <div class="param-group">
+                        <label>
+                            前景阈值
+                            <span class="param-value">{{ params.alphaMattingForegroundThreshold }}</span>
+                        </label>
+                        <input
+                            type="range"
+                            v-model.number="params.alphaMattingForegroundThreshold"
+                            min="200"
+                            max="255"
+                            step="5">
+                    </div>
+
+                    <div class="param-group">
+                        <label>
+                            背景阈值
+                            <span class="param-value">{{ params.alphaMattingBackgroundThreshold }}</span>
+                        </label>
+                        <input
+                            type="range"
+                            v-model.number="params.alphaMattingBackgroundThreshold"
+                            min="0"
+                            max="50"
+                            step="5">
+                    </div>
+
+                    <div class="param-group">
+                        <label>
+                            边缘腐蚀大小
+                            <span class="param-value">{{ params.alphaMattingErodeSize }}</span>
+                        </label>
+                        <input
+                            type="range"
+                            v-model.number="params.alphaMattingErodeSize"
+                            min="0"
+                            max="20"
+                            step="1">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 执行按钮 -->
+            <div style="text-align: center;">
+                <button
+                    class="btn btn-primary"
+                    @click="executeSkill"
+                    :disabled="!selectedFile || processing">
+                    {{ processing ? '处理中...' : '🚀 开始执行' }}
+                </button>
+            </div>
+
+            <!-- 进度显示 -->
+            <div v-if="processing" class="progress">
+                <div class="spinner"></div>
+                <p>{{ progressMessage }}</p>
+            </div>
+
+            <!-- 错误显示 -->
+            <div v-if="errorMessage" class="error">
+                ❌ {{ errorMessage }}
+            </div>
+
+            <!-- 结果显示 -->
+            <div v-if="result" class="result-section">
+                <h3>✅ 处理结果</h3>
+                <img :src="result.outputUrl" class="result-image" alt="处理结果">
+                <div class="result-info">
+                    <p><strong>输出文件:</strong> {{ result.outputFilename }}</p>
+                    <p><strong>执行时间:</strong> {{ result.executionTime }}ms</p>
+                    <p><strong>Prompt ID:</strong> {{ result.promptId }}</p>
+                </div>
+                <div style="text-align: center; margin-top: 20px;">
+                    <a :href="result.outputUrl" download class="btn btn-primary">
+                        💾 下载结果
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Powered by Vue 3 + Spring Boot + Claude Skills + ComfyUI</p>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    serverStatus: false,
+                    selectedSkill: 'matting',
+                    selectedFile: null,
+                    previewUrl: null,
+                    isDragging: false,
+                    processing: false,
+                    progressMessage: '',
+                    errorMessage: null,
+                    result: null,
+                    params: {
+                        threshold: 0.3,
+                        alphaMatting: true,
+                        alphaMattingForegroundThreshold: 240,
+                        alphaMattingBackgroundThreshold: 10,
+                        alphaMattingErodeSize: 10
+                    }
+                };
+            },
+            mounted() {
+                this.checkServerStatus();
+            },
+            methods: {
+                async checkServerStatus() {
+                    try {
+                        const response = await axios.get('/api/matting/status');
+                        this.serverStatus = response.data.code === 200;
+                    } catch (error) {
+                        this.serverStatus = false;
+                        console.error('检查服务器状态失败:', error);
+                    }
+                },
+                selectSkill(skill) {
+                    this.selectedSkill = skill;
+                    this.result = null;
+                    this.errorMessage = null;
+                },
+                triggerFileInput() {
+                    this.$refs.fileInput.click();
+                },
+                handleFileSelect(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        this.loadFile(file);
+                    }
+                },
+                handleFileDrop(event) {
+                    this.isDragging = false;
+                    const file = event.dataTransfer.files[0];
+                    if (file && file.type.startsWith('image/')) {
+                        this.loadFile(file);
+                    }
+                },
+                loadFile(file) {
+                    this.selectedFile = file;
+                    this.previewUrl = URL.createObjectURL(file);
+                    this.result = null;
+                    this.errorMessage = null;
+                },
+                async executeSkill() {
+                    if (!this.selectedFile) {
+                        this.errorMessage = '请先选择一张图片';
+                        return;
+                    }
+
+                    this.processing = true;
+                    this.errorMessage = null;
+                    this.result = null;
+                    this.progressMessage = '正在执行 Matting Skill...';
+
+                    try {
+                        const formData = new FormData();
+                        formData.append('image', this.selectedFile);
+                        formData.append('threshold', this.params.threshold);
+                        formData.append('alphaMatting', this.params.alphaMatting);
+                        formData.append('alphaMattingForegroundThreshold', this.params.alphaMattingForegroundThreshold);
+                        formData.append('alphaMattingBackgroundThreshold', this.params.alphaMattingBackgroundThreshold);
+                        formData.append('alphaMattingErodeSize', this.params.alphaMattingErodeSize);
+
+                        const response = await axios.post('/api/skill/matting', formData, {
+                            headers: {
+                                'Content-Type': 'multipart/form-data'
+                            }
+                        });
+
+                        if (response.data.code === 200) {
+                            this.result = response.data.data;
+                            this.progressMessage = '处理完成！';
+                        } else {
+                            this.errorMessage = response.data.message || '处理失败';
+                        }
+                    } catch (error) {
+                        console.error('执行 Skill 失败:', error);
+                        this.errorMessage = error.response?.data?.message || error.message || '网络错误';
+                    } finally {
+                        this.processing = false;
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
