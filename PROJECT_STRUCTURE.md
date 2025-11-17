@@ -38,12 +38,11 @@ comfyui-matting/
 │           └── workflows/                      # ComfyUI 工作流
 │               └── sam_matting.json            # SAM 抠图工作流
 │
-├── workflows/                                  # 额外工作流存储
-│   └── sam_matting.json
-│
+├── .gitignore                                  # Git 忽略配置
 ├── pom.xml                                     # Maven 配置 (JDK 21)
 ├── README.md                                   # 项目主文档
-└── ARCHITECTURE.md                             # 架构设计文档
+├── ARCHITECTURE.md                             # 架构设计文档
+└── PROJECT_STRUCTURE.md                        # 项目结构文档
 ```
 
 ## 🎯 核心文件说明
