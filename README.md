@@ -1,221 +1,340 @@
-# ComfyUI Matting Service
+# ComfyUI Matting Service V2.0
 
-**简单易用的 ComfyUI 抠图服务** - 参考 [word2picture](https://github.com/treeHeartPig/word2picture) 的简化架构
+**基于 Vue 3 + Spring Boot + Claude Skills + ComfyUI 的智能抠图服务**
 
-## 📋 项目概述
+## 🎯 项目概述
 
-这是一个极简的 ComfyUI API 服务封装，通过简单的配置即可调用 ComfyUI 工作流进行图像抠图处理。
+这是一个全新架构的 ComfyUI 抠图服务，通过 Claude Skills 实现前端与 ComfyUI 的解耦，支持灵活扩展不同的图像处理功能。
 
 ### 核心特性
 
-- 🚀 **极简架构**: 单文件服务类，无复杂依赖
-- ⚙️ **简单配置**: 只需配置 ComfyUI 服务器地址
-- 📦 **开箱即用**: 3 行代码即可完成抠图
-- 🔄 **灵活扩展**: 支持任意 ComfyUI 工作流
+- 🎨 **Vue 3 前端** - 现代化的响应式用户界面
+- ☕ **Spring Boot + JDK 21** - 高性能后端服务
+- 🤖 **Claude Skills 架构** - 基于技能的模块化设计
+- 🔄 **灵活扩展** - 轻松添加新的图像处理技能
+- 📦 **开箱即用** - Maven 一键构建运行
 
-## 🏗️ 项目结构
+## 🏗️ 架构设计
+
+### 整体架构流程
+
+```
+┌─────────────────┐
+│   Vue 3 前端    │ (用户界面)
+│  index.html     │
+└────────┬────────┘
+         │ HTTP POST /api/skill/matting
+         ▼
+┌─────────────────┐
+│ SkillController │ (Spring Boot 控制器)
+│  处理 API 请求  │
+└────────┬────────┘
+         │ 调用 executeMattingSkill()
+         ▼
+┌─────────────────┐
+│ SkillExecutor   │ (技能执行器)
+│ 读取 Skill 定义 │
+│ 验证参数        │
+└────────┬────────┘
+         │ 引用 .claude/skills/matting.md
+         │ 调用 ComfyUIService
+         ▼
+┌─────────────────┐
+│ ComfyUIService  │ (ComfyUI API 封装)
+│ - 上传图片      │
+│ - 加载工作流    │
+│ - 执行任务      │
+│ - 下载结果      │
+└────────┬────────┘
+         │ HTTP API 调用
+         ▼
+┌─────────────────┐
+│   ComfyUI API   │ (外部服务)
+│  执行工作流     │
+└─────────────────┘
+```
+
+## 📁 项目结构
 
 ```
 comfyui-matting/
-├── comfyui_service.py  # 核心服务类（单文件）
-├── config.yaml         # 配置文件（只配置服务器地址）
-├── workflows/          # 工作流 JSON 文件目录
-│   └── sam_matting.json
-├── example.py          # 使用示例
-└── requirements.txt    # Python 依赖
+├── .claude/                          # Claude Skills 定义目录
+│   └── skills/
+│       └── matting.md                # 抠图技能定义
+│
+├── src/
+│   ├── main/
+│   │   ├── java/com/yimeil/comfyui/
+│   │   │   ├── ComfyuiMattingApplication.java  # 启动类
+│   │   │   │
+│   │   │   ├── controller/                     # 控制器层
+│   │   │   │   ├── SkillController.java        # Claude Skills API
+│   │   │   │   ├── MattingController.java      # 传统抠图 API (保留)
+│   │   │   │   └── PageController.java         # 页面路由
+│   │   │   │
+│   │   │   ├── service/                        # 服务层
+│   │   │   │   ├── SkillExecutor.java          # 技能执行器 ⭐ 新增
+│   │   │   │   └── ComfyUIService.java         # ComfyUI 核心服务
+│   │   │   │
+│   │   │   ├── model/                          # 数据模型
+│   │   │   │   ├── MattingRequest.java
+│   │   │   │   ├── MattingResult.java
+│   │   │   │   └── ApiResponse.java
+│   │   │   │
+│   │   │   └── config/                         # 配置类
+│   │   │       ├── ComfyUIConfig.java
+│   │   │       └── WebConfig.java
+│   │   │
+│   │   └── resources/
+│   │       ├── application.yml                 # 应用配置
+│   │       ├── static/                         # 静态资源
+│   │       │   └── index.html                  # Vue 3 前端 ⭐ 新增
+│   │       └── workflows/                      # 工作流目录
+│   │           └── sam_matting.json
+│   │
+│   └── test/                                    # 测试
+│
+├── pom.xml                                      # Maven 配置 (JDK 21)
+├── README_V2.md                                 # 本文档
+└── output/                                      # 输出目录
 ```
-
-**对比传统架构的优势：**
-- ❌ 无需复杂的适配器系统
-- ❌ 无需 Schema 验证
-- ❌ 无需多层抽象
-- ✅ 直接调用，简单明了
 
 ## 🚀 快速开始
 
-### 1. 前置要求
+### 前置要求
 
-- **ComfyUI 已安装并运行** (默认端口 8188)
-  ```bash
-  # 启动 ComfyUI
-  python main.py
-  ```
+1. **JDK 21**
+   ```bash
+   java -version  # 应显示 "21.x.x"
+   ```
 
-- **Python 3.8+**
+2. **Maven 3.6+**
+   ```bash
+   mvn -version
+   ```
 
-### 2. 安装依赖
+3. **ComfyUI 已运行** (默认端口 8188)
+   ```bash
+   # 启动 ComfyUI
+   python main.py
+   ```
 
-```bash
-pip install -r requirements.txt
-```
+### 配置 ComfyUI 地址
 
-### 3. 配置服务器地址
-
-编辑 `config.yaml`:
+编辑 `src/main/resources/application.yml`:
 
 ```yaml
-# ComfyUI API 地址（必须配置）
-comfyui_api_url: "127.0.0.1:8188"
-
-# 工作流文件目录
-workflows_dir: "workflows"
-
-# 请求超时时间（秒）
-timeout: 30
+comfyui:
+  api:
+    base-url: http://127.0.0.1:8188  # 修改为你的 ComfyUI 地址
 ```
 
-### 4. 开始使用
+### 运行应用
 
-**最简单的用法（3 行代码）：**
+```bash
+# 方式 1: Maven 运行
+mvn spring-boot:run
 
-```python
-from comfyui_service import ComfyUIService
-
-service = ComfyUIService()
-result = service.run_matting("sam_matting.json", "input.jpg")
+# 方式 2: 打包运行
+mvn clean package -DskipTests
+java -jar target/comfyui-matting-2.0.0.jar
 ```
 
-就这么简单！ 🎉
+### 访问应用
 
-## 📖 使用示例
+打开浏览器访问：**http://localhost:8080**
 
-### 示例 1: 一键抠图（默认参数）
+## 🎨 使用说明
 
-```python
-from comfyui_service import ComfyUIService
+### Web 界面使用
 
-# 初始化服务
-service = ComfyUIService()
+1. **选择功能** - 点击"智能抠图"按钮
+2. **上传图片** - 拖拽或点击上传图片文件
+3. **调整参数** - 根据需要调整 SAM 阈值和边缘优化参数
+4. **执行处理** - 点击"开始执行"按钮
+5. **下载结果** - 处理完成后下载抠图结果
 
-# 检查服务器
-if not service.check_server():
-    print("无法连接到 ComfyUI 服务器")
-    exit(1)
+### API 使用
 
-# 执行抠图
-result = service.run_matting(
-    workflow_name="sam_matting.json",
-    input_image="test.jpg",
-    output_dir="output"
-)
+#### 执行抠图 Skill
 
-print(f"完成！结果: {result}")
+```bash
+curl -X POST http://localhost:8080/api/skill/matting \
+  -F "image=@test.jpg" \
+  -F "threshold=0.3" \
+  -F "alphaMatting=true"
 ```
 
-### 示例 2: 自定义参数
-
-```python
-# 自定义参数（节点ID: {参数名: 参数值}）
-params = {
-    "15": {  # SAM 模型节点
-        "threshold": 0.5
-    },
-    "23": {  # Alpha Matting 节点
-        "alpha_matting": "true",
-        "alpha_matting_foreground_threshold": 240,
-        "alpha_matting_background_threshold": 10
-    }
+**响应示例：**
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "success": true,
+    "outputFilename": "matting_result_12345.png",
+    "outputUrl": "/output/matting_result_12345.png",
+    "promptId": "abc-123-def",
+    "executionTime": 5230
+  }
 }
-
-result = service.run_matting(
-    workflow_name="sam_matting.json",
-    input_image="test.jpg",
-    params=params,
-    output_dir="output"
-)
 ```
 
-### 示例 3: 完全控制（底层 API）
+#### 获取可用 Skills
 
-```python
-# 1. 加载工作流
-workflow = service.load_workflow("sam_matting.json")
-
-# 2. 上传图片
-uploaded_name = service.upload_image("test.jpg")
-
-# 3. 更新工作流参数
-workflow = service.update_workflow_params(workflow, "10", "image", uploaded_name)
-workflow = service.update_workflow_params(workflow, "15", "threshold", 0.5)
-
-# 4. 执行工作流
-outputs = service.execute_workflow(workflow)
-
-# 5. 下载结果
-for node_id, node_output in outputs.items():
-    if 'images' in node_output:
-        for img in node_output['images']:
-            service.download_image(
-                filename=img['filename'],
-                output_path=f"output/{img['filename']}",
-                subfolder=img.get('subfolder', '')
-            )
+```bash
+curl http://localhost:8080/api/skill/list
 ```
 
-更多示例请查看 `example.py`
+#### 获取 Skill 信息
 
-## 🔧 添加新工作流
-
-只需 2 步：
-
-### 1. 导出 ComfyUI 工作流
-
-在 ComfyUI 中：
-- 构建您的工作流
-- 点击 "Save (API Format)"
-- 保存到 `workflows/your_workflow.json`
-
-### 2. 使用工作流
-
-```python
-result = service.run_matting("your_workflow.json", "input.jpg")
+```bash
+curl http://localhost:8080/api/skill/matting/info
 ```
 
-就这么简单！无需写适配器，无需写配置。
+## 🔧 添加新的 Skill
 
-## 📚 API 文档
+### 步骤 1: 创建 Skill 定义
 
-### ComfyUIService 类
+在 `.claude/skills/` 目录下创建新的 Skill 定义文件，例如 `enhance.md`:
 
-#### 初始化
+```markdown
+# Image Enhancement Skill
 
-```python
-service = ComfyUIService(config_path="config.yaml")
+This skill provides image enhancement capabilities.
+
+## Input Parameters
+- imagePath: Path to input image
+- brightness: Brightness adjustment (-100 to 100)
+- contrast: Contrast adjustment (-100 to 100)
+
+## Output
+- success: Operation status
+- outputFilename: Enhanced image filename
+- outputUrl: URL to download result
 ```
 
-#### 主要方法
+### 步骤 2: 在 SkillExecutor 中实现
 
-**一键执行（推荐）：**
+```java
+public MattingResult executeEnhanceSkill(MultipartFile imageFile, EnhanceRequest request) {
+    log.info("【Enhance Skill】开始执行");
 
-```python
-run_matting(workflow_name, input_image, params=None, output_dir="output", verbose=True)
+    // 验证 Skill 定义
+    validateSkillExists("enhance");
+
+    // 调用 ComfyUIService 执行增强任务
+    return comfyUIService.runEnhancement(imageFile, request);
+}
 ```
 
-**底层方法：**
+### 步骤 3: 添加 Controller 端点
 
-- `load_workflow(workflow_name)` - 加载工作流 JSON
-- `upload_image(image_path)` - 上传图片
-- `update_workflow_params(workflow, node_id, param_name, param_value)` - 更新参数
-- `execute_workflow(workflow, verbose=True)` - 执行工作流
-- `download_image(filename, output_path, subfolder="", folder_type="output")` - 下载图片
-- `check_server()` - 检查服务器状态
+```java
+@PostMapping("/enhance")
+public ApiResponse<MattingResult> executeEnhanceSkill(
+        @RequestParam("image") MultipartFile imageFile,
+        @RequestParam(value = "brightness", required = false) Integer brightness,
+        @RequestParam(value = "contrast", required = false) Integer contrast) {
+    // 执行 Enhance Skill
+    return skillExecutor.executeEnhanceSkill(imageFile, request);
+}
+```
 
-## 🎨 内置工作流
+### 步骤 4: 更新前端 UI
 
-### SAM 智能抠图 (sam_matting.json)
+在 Vue 前端添加新的 Skill 按钮和参数控制。
 
-使用 Segment Anything Model 进行智能图像抠图。
+## 📊 技术栈
 
-**输入：** 图片文件路径
+| 层级 | 技术 | 版本 |
+|------|------|------|
+| **前端** | Vue 3 | 3.x (CDN) |
+| **前端库** | Axios | Latest |
+| **后端框架** | Spring Boot | 3.2.0 |
+| **Java** | OpenJDK | 21 |
+| **构建工具** | Maven | 3.9+ |
+| **HTTP 客户端** | Apache HttpClient | 5.3 |
+| **JSON 处理** | Jackson | (Spring Boot 内置) |
+| **日志** | Slf4j + Logback | (Spring Boot 内置) |
 
-**输出：** 抠图后的 PNG 图片（带透明背景）
+## 🔍 API 端点说明
 
-**关键节点参数：**
-- 节点 10: 图片输入
-- 节点 15: SAM 阈值 (threshold)
-- 节点 23: Alpha Matting 参数
+### Claude Skills API
 
-## 🔍 故障排查
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/api/skill/matting` | POST | 执行抠图 Skill |
+| `/api/skill/list` | GET | 获取所有可用 Skills |
+| `/api/skill/{skillName}/info` | GET | 获取特定 Skill 信息 |
+
+### 传统 API (向后兼容)
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/api/matting/execute` | POST | 直接执行抠图 |
+| `/api/matting/status` | GET | 检查服务器状态 |
+
+## ⚙️ 配置参数
+
+### application.yml 完整配置
+
+```yaml
+server:
+  port: 8080                          # 应用端口
+
+comfyui:
+  api:
+    base-url: http://127.0.0.1:8188  # ComfyUI 地址
+    connect-timeout: 10000            # 连接超时（毫秒）
+    read-timeout: 300000              # 读取超时（毫秒）
+
+  workflow:
+    directory: workflows              # 工作流目录
+    default: sam_matting.json         # 默认工作流
+
+output:
+  directory: output                   # 输出目录
+  auto-create: true                   # 自动创建输出目录
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 50MB             # 最大文件大小
+      max-request-size: 50MB          # 最大请求大小
+```
+
+## 🌟 版本对比
+
+| 特性 | V1.0 (Thymeleaf) | V2.0 (Vue + Skills) |
+|------|------------------|---------------------|
+| **JDK 版本** | 17 | 21 ⭐ |
+| **前端技术** | Thymeleaf | Vue 3 ⭐ |
+| **架构模式** | MVC | Skills-based ⭐ |
+| **扩展性** | 中等 | 优秀 ⭐ |
+| **模块化** | 低 | 高 ⭐ |
+| **用户体验** | 良好 | 优秀 ⭐ |
+| **API 设计** | RESTful | RESTful + Skills ⭐ |
+
+## 🔒 Claude Skills 架构优势
+
+### 1. 解耦与模块化
+- 前端只需关注 Skill 名称，无需了解底层实现
+- 每个 Skill 独立定义，易于维护和测试
+
+### 2. 易于扩展
+- 添加新功能只需创建新 Skill 定义
+- 无需修改核心业务逻辑
+
+### 3. 统一管理
+- 所有 Skills 定义集中在 `.claude/skills/` 目录
+- 便于版本控制和文档管理
+
+### 4. 灵活组合
+- 未来可以实现 Skill 链式调用
+- 支持复杂的图像处理流程
+
+## 🐛 故障排查
 
 ### 无法连接 ComfyUI
 
@@ -223,30 +342,98 @@ run_matting(workflow_name, input_image, params=None, output_dir="output", verbos
 # 检查 ComfyUI 是否运行
 curl http://127.0.0.1:8188/system_stats
 
-# 如果在其他端口，修改 config.yaml 中的 comfyui_api_url
+# 检查配置
+cat src/main/resources/application.yml | grep base-url
 ```
 
-### 工作流文件未找到
+### JDK 版本不匹配
 
-确保工作流 JSON 文件在 `workflows/` 目录下。
+```bash
+# 检查 Java 版本
+java -version
 
-### 执行失败
+# 应显示 21.x.x，如果不是，请安装 JDK 21
+```
 
-1. 检查 ComfyUI 是否安装了所需的自定义节点
-2. 查看终端输出的详细错误信息
-3. 确认工作流 JSON 格式正确（API Format）
+### Maven 编译错误
 
-## 🌟 为什么选择简化架构？
+```bash
+# 清理并重新编译
+mvn clean install -DskipTests -U
+```
 
-| 传统架构 | 简化架构 |
-|---------|---------|
-| 4 层抽象（Adapter → Manager → Executor → Client） | 1 层服务（Service） |
-| 893+ 行核心代码 | 300+ 行核心代码 |
-| 需要 YAML Schema 验证 | 直接使用工作流 JSON |
-| 需要写适配器类 | 无需额外代码 |
-| 学习曲线陡峭 | 3 行代码上手 |
+### Skill 执行失败
 
-**参考项目：** [word2picture](https://github.com/treeHeartPig/word2picture) - 简单实用的 ComfyUI Java 封装
+检查日志中的详细错误信息，常见原因：
+- Skill 定义文件不存在
+- 参数验证失败
+- ComfyUI 服务不可用
+- 工作流文件缺失或格式错误
+
+## 📚 开发指南
+
+### 日志级别
+
+编辑 `application.yml`:
+
+```yaml
+logging:
+  level:
+    com.yimeil.comfyui: DEBUG         # 应用日志
+    org.springframework: INFO          # Spring 框架日志
+```
+
+### 启用 CORS (跨域支持)
+
+如果需要从其他域访问 API，编辑 `WebConfig.java`:
+
+```java
+@Override
+public void addCorsMappings(CorsRegistry registry) {
+    registry.addMapping("/api/**")
+            .allowedOrigins("*")
+            .allowedMethods("GET", "POST", "PUT", "DELETE");
+}
+```
+
+## 🚢 生产部署
+
+### 打包
+
+```bash
+mvn clean package -DskipTests
+```
+
+### 运行
+
+```bash
+java -jar target/comfyui-matting-2.0.0.jar
+```
+
+### 后台运行
+
+```bash
+nohup java -jar target/comfyui-matting-2.0.0.jar > app.log 2>&1 &
+```
+
+### Docker 部署
+
+创建 `Dockerfile`:
+
+```dockerfile
+FROM openjdk:21-slim
+WORKDIR /app
+COPY target/comfyui-matting-2.0.0.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
+```
+
+构建并运行:
+
+```bash
+docker build -t comfyui-matting:2.0 .
+docker run -p 8080:8080 comfyui-matting:2.0
+```
 
 ## 📄 许可
 
@@ -255,9 +442,10 @@ MIT License
 ## 🔗 相关链接
 
 - [ComfyUI](https://github.com/comfyanonymous/ComfyUI) - 强大的 Stable Diffusion GUI
-- [word2picture](https://github.com/treeHeartPig/word2picture) - 参考的简化架构
-- [Segment Anything](https://github.com/facebookresearch/segment-anything) - Meta 的通用分割模型
+- [Vue 3 文档](https://vuejs.org/) - Vue.js 官方文档
+- [Spring Boot 文档](https://spring.io/projects/spring-boot) - Spring Boot 官方文档
+- [JDK 21 特性](https://openjdk.org/projects/jdk/21/) - Java 21 新特性
 
 ---
 
-**Keep It Simple!** 🚀
+**V2.0 - 更智能、更模块化、更易扩展！** 🚀
