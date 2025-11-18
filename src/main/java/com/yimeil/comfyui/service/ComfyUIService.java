@@ -145,8 +145,23 @@ public class ComfyUIService {
             try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
                 String responseBody = EntityUtils.toString(response.getEntity());
                 JsonNode jsonNode = objectMapper.readTree(responseBody);
-                String promptId = jsonNode.get("prompt_id").asText();
 
+                // 检查是否有错误
+                if (jsonNode.has("error")) {
+                    JsonNode error = jsonNode.get("error");
+                    String errorType = error.has("type") ? error.get("type").asText() : "unknown";
+                    String errorMessage = error.has("message") ? error.get("message").asText() : responseBody;
+                    log.error("ComfyUI 工作流执行错误 [{}]: {}", errorType, errorMessage);
+                    throw new IOException("ComfyUI 错误 [" + errorType + "]: " + errorMessage);
+                }
+
+                // 获取 prompt_id
+                if (!jsonNode.has("prompt_id")) {
+                    log.error("ComfyUI 响应中缺少 prompt_id: {}", responseBody);
+                    throw new IOException("ComfyUI 响应格式错误: 缺少 prompt_id");
+                }
+
+                String promptId = jsonNode.get("prompt_id").asText();
                 log.info("工作流已提交，Prompt ID: {}", promptId);
                 return promptId;
             }
@@ -300,6 +315,82 @@ public class ComfyUIService {
 
         } catch (Exception e) {
             log.error("抠图失败", e);
+            result.setSuccess(false);
+            result.setErrorMessage(e.getMessage());
+        }
+
+        result.setExecutionTime(System.currentTimeMillis() - startTime);
+        return result;
+    }
+
+    /**
+     * 关键字抠图
+     * 使用文本关键字识别并提取图像中的对象
+     */
+    public MattingResult runKeywordMatting(MultipartFile imageFile, MattingRequest request) {
+        MattingResult result = new MattingResult();
+        long startTime = System.currentTimeMillis();
+
+        try {
+            log.info("开始关键字抠图，关键字: {}", request.getKeyword());
+
+            // 1. 加载关键字抠图工作流
+            JsonNode workflow = loadWorkflowFromResource("keyword_matting.json");
+
+            // 2. 上传图片
+            String uploadedName = uploadImage(imageFile);
+
+            // 3. 更新工作流参数
+            // 更新加载图像节点
+            workflow = updateWorkflowParams(workflow, "1", "image", uploadedName);
+
+            // 更新关键字提示词
+            String keyword = request.getKeyword() != null ? request.getKeyword() : "person";
+            workflow = updateWorkflowParams(workflow, "4", "prompt", keyword);
+
+            // 更新阈值
+            if (request.getThreshold() != null) {
+                workflow = updateWorkflowParams(workflow, "4", "threshold", request.getThreshold());
+            }
+
+            // 4. 执行工作流
+            String promptId = executeWorkflow(workflow);
+            result.setPromptId(promptId);
+
+            // 5. 等待完成
+            JsonNode outputs = waitForCompletion(promptId);
+
+            // 6. 下载结果
+            String outputFilename = null;
+            for (JsonNode nodeOutput : outputs) {
+                if (nodeOutput.has("images")) {
+                    JsonNode images = nodeOutput.get("images");
+                    if (images.isArray() && images.size() > 0) {
+                        JsonNode firstImage = images.get(0);
+                        String filename = firstImage.get("filename").asText();
+                        String subfolder = firstImage.has("subfolder") ?
+                                firstImage.get("subfolder").asText() : "";
+
+                        downloadImage(filename, subfolder, "output");
+                        outputFilename = filename;
+                        break;
+                    }
+                }
+            }
+
+            if (outputFilename != null) {
+                result.setSuccess(true);
+                result.setOutputFilename(outputFilename);
+                result.setOutputUrl("/output/" + outputFilename);
+                log.info("关键字抠图成功: {}", outputFilename);
+            } else {
+                result.setSuccess(false);
+                result.setErrorMessage("未找到输出图片");
+                log.error("关键字抠图失败: 未找到输出图片");
+            }
+
+        } catch (Exception e) {
+            log.error("关键字抠图失败", e);
             result.setSuccess(false);
             result.setErrorMessage(e.getMessage());
         }

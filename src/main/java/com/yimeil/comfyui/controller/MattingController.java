@@ -61,6 +61,40 @@ public class MattingController {
     }
 
     /**
+     * 执行关键字抠图
+     */
+    @PostMapping("/execute-keyword")
+    public ApiResponse<MattingResult> executeKeywordMatting(
+            @RequestParam("image") MultipartFile imageFile,
+            @RequestParam("keyword") String keyword,
+            @RequestParam(value = "threshold", required = false) Double threshold
+    ) {
+        try {
+            log.info("收到关键字抠图请求: {}, 关键字: {}", imageFile.getOriginalFilename(), keyword);
+
+            // 构建请求
+            MattingRequest request = new MattingRequest();
+            request.setKeyword(keyword);
+            request.setThreshold(threshold != null ? threshold : 0.3);
+
+            // 执行关键字抠图
+            MattingResult result = comfyUIService.runKeywordMatting(imageFile, request);
+
+            if (result.isSuccess()) {
+                log.info("关键字抠图执行成功: {}", result.getOutputFilename());
+                return ApiResponse.success(result);
+            } else {
+                log.error("关键字抠图执行失败: {}", result.getErrorMessage());
+                return ApiResponse.error(result.getErrorMessage());
+            }
+
+        } catch (Exception e) {
+            log.error("关键字抠图失败", e);
+            return ApiResponse.error("关键字抠图失败: " + e.getMessage());
+        }
+    }
+
+    /**
      * 检查服务器状态
      */
     @GetMapping("/status")
