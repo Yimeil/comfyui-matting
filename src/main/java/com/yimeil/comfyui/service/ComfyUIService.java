@@ -233,13 +233,13 @@ public class ComfyUIService {
     /**
      * 下载输出图片
      */
-    public File downloadImage(String filename, String subfolder, String outputDir) throws IOException {
-        log.info("下载图片: filename={}, subfolder={}, outputDir={}", filename, subfolder, outputDir);
+    public File downloadImage(String filename, String subfolder, String type, String outputDir) throws IOException {
+        log.info("下载图片: filename={}, subfolder={}, type={}, outputDir={}", filename, subfolder, type, outputDir);
 
         String url = config.getApi().getBaseUrl() + "/view"
                 + "?filename=" + filename
                 + "&subfolder=" + (subfolder != null ? subfolder : "")
-                + "&type=output";
+                + "&type=" + (type != null ? type : "output");
 
         log.info("下载URL: {}", url);
 
@@ -316,8 +316,10 @@ public class ComfyUIService {
                         String filename = firstImage.get("filename").asText();
                         String subfolder = firstImage.has("subfolder") ?
                                 firstImage.get("subfolder").asText() : "";
+                        String type = firstImage.has("type") ?
+                                firstImage.get("type").asText() : "output";
 
-                        downloadImage(filename, subfolder, "output");
+                        downloadImage(filename, subfolder, type, "output");
                         outputFilename = filename;
                         break;
                     }
@@ -422,8 +424,10 @@ public class ComfyUIService {
                         String filename = firstImage.get("filename").asText();
                         String subfolder = firstImage.has("subfolder") ?
                                 firstImage.get("subfolder").asText() : "";
+                        String type = firstImage.has("type") ?
+                                firstImage.get("type").asText() : "output";
 
-                        downloadImage(filename, subfolder, "output");
+                        downloadImage(filename, subfolder, type, "output");
                         outputFilename = filename;
                         break;
                     }
