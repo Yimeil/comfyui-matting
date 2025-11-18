@@ -744,6 +744,7 @@
                 });
 
                 const result = await response.json();
+                console.log('API 响应:', result);
 
                 if (result.code === 200 && result.data && result.data.success) {
                     // 显示结果
@@ -752,7 +753,15 @@
                     resultFilename = result.data.outputFilename;
                     document.getElementById('resultSection').classList.add('show');
                 } else {
-                    const errorMsg = result.message || (result.data && result.data.errorMessage) || '未知错误';
+                    // 更好的错误处理
+                    let errorMsg = '未知错误';
+                    if (result.message) {
+                        errorMsg = result.message;
+                    } else if (result.data && result.data.errorMessage) {
+                        errorMsg = result.data.errorMessage;
+                    } else if (result.data && typeof result.data === 'string') {
+                        errorMsg = result.data;
+                    }
                     alert('抠图失败: ' + errorMsg);
                 }
             } catch (error) {
