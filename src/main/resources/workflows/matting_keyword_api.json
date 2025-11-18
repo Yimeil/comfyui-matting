@@ -1,483 +1,63 @@
 {
-  "id": "888dba49-6f45-4ca1-ab9c-214f68e8fac0",
-  "revision": 0,
-  "last_node_id": 6,
-  "last_link_id": 4,
-  "nodes": [
-    {
-      "id": 1,
-      "type": "LoadImage",
-      "pos": [
-        -1854.6293125395136,
-        1343.9058461740892
-      ],
-      "size": [
-        270,
-        340
-      ],
-      "flags": {},
-      "order": 0,
-      "mode": 0,
-      "inputs": [
-        {
-          "label": "image",
-          "localized_name": "图像",
-          "name": "image",
-          "type": "COMBO",
-          "widget": {
-            "name": "image"
-          },
-          "link": null
-        },
-        {
-          "label": "upload",
-          "localized_name": "选择文件上传",
-          "name": "upload",
-          "type": "IMAGEUPLOAD",
-          "widget": {
-            "name": "upload"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "label": "IMAGE",
-          "localized_name": "图像",
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "slot_index": 0,
-          "links": [
-            1
-          ]
-        },
-        {
-          "label": "MASK",
-          "localized_name": "遮罩",
-          "name": "MASK",
-          "type": "MASK"
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.67",
-        "Node name for S&R": "LoadImage",
-        "ue_properties": {
-          "version": "7.1",
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "6EE613564-3.jpg",
-        "image"
-      ]
+  "1": {
+    "inputs": {
+      "image": "6EE613564-3.jpg"
     },
-    {
-      "id": 4,
-      "type": "ArgosTranslateTextNode",
-      "pos": [
-        -1544.6293125395136,
-        1383.9058461740892
-      ],
-      "size": [
-        400,
-        200
-      ],
-      "flags": {},
-      "order": 1,
-      "mode": 0,
-      "inputs": [
-        {
-          "label": "from_translate",
-          "localized_name": "from_translate",
-          "name": "from_translate",
-          "type": "COMBO",
-          "widget": {
-            "name": "from_translate"
-          },
-          "link": null
-        },
-        {
-          "label": "to_translate",
-          "localized_name": "to_translate",
-          "name": "to_translate",
-          "type": "COMBO",
-          "widget": {
-            "name": "to_translate"
-          },
-          "link": null
-        },
-        {
-          "label": "text",
-          "localized_name": "text",
-          "name": "text",
-          "type": "STRING",
-          "widget": {
-            "name": "text"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "label": "text",
-          "localized_name": "text",
-          "name": "text",
-          "type": "STRING",
-          "slot_index": 0,
-          "links": [
-            2
-          ]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfyui_custom_nodes_alekpet",
-        "ver": "ebac117522fe7ecfe08d1bc30ece3102a53a3247",
-        "Node name for S&R": "ArgosTranslateTextNode",
-        "ue_properties": {
-          "version": "7.1",
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "chinese",
-        "english",
-        "红色袜子"
-      ]
-    },
-    {
-      "id": 2,
-      "type": "LayerMask: SegmentAnythingUltra V2",
-      "pos": [
-        -1094.6293125395136,
-        1383.9058461740892
-      ],
-      "size": [
-        330.878515625,
-        370
-      ],
-      "flags": {},
-      "order": 3,
-      "mode": 0,
-      "inputs": [
-        {
-          "label": "image",
-          "localized_name": "图像",
-          "name": "image",
-          "type": "IMAGE",
-          "link": 1
-        },
-        {
-          "label": "sam_model",
-          "localized_name": "SAM模型",
-          "name": "sam_model",
-          "type": "COMBO",
-          "widget": {
-            "name": "sam_model"
-          },
-          "link": null
-        },
-        {
-          "label": "grounding_dino_model",
-          "localized_name": "Grounding Dino模型",
-          "name": "grounding_dino_model",
-          "type": "COMBO",
-          "widget": {
-            "name": "grounding_dino_model"
-          },
-          "link": null
-        },
-        {
-          "label": "threshold",
-          "localized_name": "阈值",
-          "name": "threshold",
-          "type": "FLOAT",
-          "widget": {
-            "name": "threshold"
-          },
-          "link": null
-        },
-        {
-          "label": "detail_method",
-          "localized_name": "细节方法",
-          "name": "detail_method",
-          "type": "COMBO",
-          "widget": {
-            "name": "detail_method"
-          },
-          "link": null
-        },
-        {
-          "label": "detail_erode",
-          "localized_name": "细节腐蚀",
-          "name": "detail_erode",
-          "type": "INT",
-          "widget": {
-            "name": "detail_erode"
-          },
-          "link": null
-        },
-        {
-          "label": "detail_dilate",
-          "localized_name": "细节膨胀",
-          "name": "detail_dilate",
-          "type": "INT",
-          "widget": {
-            "name": "detail_dilate"
-          },
-          "link": null
-        },
-        {
-          "label": "black_point",
-          "localized_name": "黑点",
-          "name": "black_point",
-          "type": "FLOAT",
-          "widget": {
-            "name": "black_point"
-          },
-          "link": null
-        },
-        {
-          "label": "white_point",
-          "localized_name": "白点",
-          "name": "white_point",
-          "type": "FLOAT",
-          "widget": {
-            "name": "white_point"
-          },
-          "link": null
-        },
-        {
-          "label": "process_detail",
-          "localized_name": "处理细节",
-          "name": "process_detail",
-          "type": "BOOLEAN",
-          "widget": {
-            "name": "process_detail"
-          },
-          "link": null
-        },
-        {
-          "label": "prompt",
-          "localized_name": "提示",
-          "name": "prompt",
-          "type": "STRING",
-          "widget": {
-            "name": "prompt"
-          },
-          "link": 2
-        },
-        {
-          "label": "device",
-          "localized_name": "设备",
-          "name": "device",
-          "type": "COMBO",
-          "widget": {
-            "name": "device"
-          },
-          "link": null
-        },
-        {
-          "label": "max_megapixels",
-          "localized_name": "最大百万像素",
-          "name": "max_megapixels",
-          "type": "FLOAT",
-          "widget": {
-            "name": "max_megapixels"
-          },
-          "link": null
-        },
-        {
-          "label": "cache_model",
-          "localized_name": "缓存模型",
-          "name": "cache_model",
-          "type": "BOOLEAN",
-          "widget": {
-            "name": "cache_model"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "label": "image",
-          "localized_name": "image",
-          "name": "image",
-          "type": "IMAGE",
-          "slot_index": 0,
-          "links": [
-            4
-          ]
-        },
-        {
-          "label": "mask",
-          "localized_name": "mask",
-          "name": "mask",
-          "type": "MASK",
-          "slot_index": 1,
-          "links": []
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfyui_layerstyle_advance",
-        "ver": "64c8317ab33f0208f2e583070acf4f8ef6faca0a",
-        "Node name for S&R": "LayerMask: SegmentAnythingUltra V2",
-        "ue_properties": {
-          "version": "7.1",
-          "widget_ue_connectable": {
-            "prompt": true
-          },
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "sam_vit_h (2.56GB)",
-        "GroundingDINO_SwinT_OGC (694MB)",
-        0.3,
-        "VITMatte(local)",
-        6,
-        6,
-        0.15,
-        0.99,
-        true,
-        "face",
-        "cuda",
-        2,
-        false
-      ],
-      "color": "rgba(27, 80, 119, 0.7)"
-    },
-    {
-      "id": 6,
-      "type": "SaveImage",
-      "pos": [
-        -1830,
-        1730
-      ],
-      "size": [
-        270,
-        58
-      ],
-      "flags": {},
-      "order": 4,
-      "mode": 0,
-      "inputs": [
-        {
-          "label": "images",
-          "localized_name": "图片",
-          "name": "images",
-          "type": "IMAGE",
-          "link": 4
-        },
-        {
-          "label": "filename_prefix",
-          "localized_name": "文件名前缀",
-          "name": "filename_prefix",
-          "type": "STRING",
-          "widget": {
-            "name": "filename_prefix"
-          },
-          "link": null
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.67",
-        "Node name for S&R": "SaveImage",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.4.1"
-        }
-      },
-      "widgets_values": [
-        "second-matting/img"
-      ]
-    },
-    {
-      "id": 5,
-      "type": "Note",
-      "pos": [
-        -2674.6293125395136,
-        1243.9058461740892
-      ],
-      "size": [
-        740,
-        240
-      ],
-      "flags": {},
-      "order": 2,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.4.1",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "\n对于需要关键字抠图的图片\n\n1.上传图片\n\n2.在节点 #4 输入描述语言；比如“红色袜子”\n\n3.点击节点 #6 上方会出现一个蓝色的按钮，点击蓝色运行当前抠图\n"
-      ],
-      "color": "#432",
-      "bgcolor": "#653"
-    }
-  ],
-  "links": [
-    [
-      1,
-      1,
-      0,
-      2,
-      0,
-      "IMAGE"
-    ],
-    [
-      2,
-      4,
-      0,
-      2,
-      10,
-      "STRING"
-    ],
-    [
-      4,
-      2,
-      0,
-      6,
-      0,
-      "IMAGE"
-    ]
-  ],
-  "groups": [
-    {
-      "id": 1,
-      "title": "关键字抠图",
-      "bounding": [
-        -1880,
-        1180,
-        1310,
-        630
-      ],
-      "color": "#3f789e",
-      "font_size": 80,
-      "flags": {}
-    }
-  ],
-  "config": {},
-  "extra": {
-    "ue_links": [],
-    "ds": {
-      "scale": 1.035120754716984,
-      "offset": [
-        2874.1278637646333,
-        -1022.4730689639504
-      ]
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "加载图像"
     }
   },
-  "version": 0.4
+  "2": {
+    "inputs": {
+      "sam_model": "sam_vit_h (2.56GB)",
+      "grounding_dino_model": "GroundingDINO_SwinT_OGC (694MB)",
+      "threshold": 0.3,
+      "detail_method": "VITMatte(local)",
+      "detail_erode": 6,
+      "detail_dilate": 6,
+      "black_point": 0.15,
+      "white_point": 0.99,
+      "process_detail": true,
+      "prompt": [
+        "4",
+        0
+      ],
+      "device": "cuda",
+      "max_megapixels": 2,
+      "cache_model": false,
+      "image": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "LayerMask: SegmentAnythingUltra V2",
+    "_meta": {
+      "title": "图层遮罩：SegmentAnything Ultra V2（高级）"
+    }
+  },
+  "4": {
+    "inputs": {
+      "from_translate": "chinese",
+      "to_translate": "english",
+      "text": "红色袜子"
+    },
+    "class_type": "ArgosTranslateTextNode",
+    "_meta": {
+      "title": "Argos Translate Text Node"
+    }
+  },
+  "6": {
+    "inputs": {
+      "filename_prefix": "second-matting/img",
+      "images": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "保存图像"
+    }
+  }
 }

@@ -99,77 +99,6 @@ public class ComfyUIService {
     }
 
     /**
-     * 将 ComfyUI UI 格式转换为 API 格式
-     * UI 格式包含: nodes, links, groups 等
-     * API 格式只需要: {nodeId: {inputs: {...}, class_type: "..."}}
-     */
-    private JsonNode convertUIFormatToAPIFormat(JsonNode uiWorkflow) {
-        if (!uiWorkflow.has("nodes")) {
-            // 已经是 API 格式
-            return uiWorkflow;
-        }
-
-        ObjectNode apiWorkflow = objectMapper.createObjectNode();
-        JsonNode nodes = uiWorkflow.get("nodes");
-
-        for (JsonNode node : nodes) {
-            String nodeId = node.get("id").asText();
-            String nodeType = node.get("type").asText();
-
-            ObjectNode apiNode = objectMapper.createObjectNode();
-            apiNode.put("class_type", nodeType);
-
-            // 构建 inputs
-            ObjectNode inputs = objectMapper.createObjectNode();
-
-            // 从 widgets_values 获取参数值
-            if (node.has("widgets_values") && node.get("widgets_values").isArray()) {
-                JsonNode widgetsValues = node.get("widgets_values");
-                JsonNode nodeInputs = node.get("inputs");
-
-                int widgetIndex = 0;
-                for (int i = 0; i < nodeInputs.size(); i++) {
-                    JsonNode input = nodeInputs.get(i);
-                    if (input.has("widget")) {
-                        String inputName = input.get("name").asText();
-                        if (widgetIndex < widgetsValues.size()) {
-                            JsonNode value = widgetsValues.get(widgetIndex);
-                            if (value.isTextual()) {
-                                inputs.put(inputName, value.asText());
-                            } else if (value.isNumber()) {
-                                inputs.set(inputName, value);
-                            } else if (value.isBoolean()) {
-                                inputs.put(inputName, value.asBoolean());
-                            }
-                            widgetIndex++;
-                        }
-                    }
-                }
-            }
-
-            // 从 inputs 获取连接关系
-            if (node.has("inputs")) {
-                for (JsonNode input : node.get("inputs")) {
-                    if (input.has("link") && !input.get("link").isNull()) {
-                        // 这里需要查找对应的 link 信息
-                        // 简化处理：如果没有 widget，说明是连接输入
-                        if (!input.has("widget")) {
-                            String inputName = input.get("name").asText();
-                            // 连接信息需要从 links 数组中查找
-                            // 暂时跳过，因为这个比较复杂
-                        }
-                    }
-                }
-            }
-
-            apiNode.set("inputs", inputs);
-            apiWorkflow.set(nodeId, apiNode);
-        }
-
-        return apiWorkflow;
-    }
-
-    /**
      * 更新工作流参数
      */
     public JsonNode updateWorkflowParams(JsonNode workflow, String nodeId,
@@ -266,7 +195,7 @@ public class ComfyUIService {
      * 等待执行完成并获取结果
      */
     public JsonNode waitForCompletion(String promptId) throws IOException, InterruptedException, ParseException {
-        log.info("等待工作流执行完成...");
+        log.info("等待工作流执行完成，Prompt ID: {}", promptId);
 
         String url = config.getApi().getBaseUrl() + "/history/" + promptId;
 
@@ -286,7 +215,12 @@ public class ComfyUIService {
 
                     if (history.has(promptId)) {
                         log.info("工作流执行完成");
-                        return history.get(promptId).get("outputs");
+                        JsonNode promptData = history.get(promptId);
+                        log.info("完整的 Prompt 数据: {}", objectMapper.writeValueAsString(promptData));
+
+                        JsonNode outputs = promptData.get("outputs");
+                        log.info("输出节点数据: {}", objectMapper.writeValueAsString(outputs));
+                        return outputs;
                     }
                 }
             }
@@ -301,12 +235,14 @@ public class ComfyUIService {
      * 下载输出图片
      */
     public File downloadImage(String filename, String subfolder, String outputDir) throws IOException {
-        log.info("下载图片: {}", filename);
+        log.info("下载图片: filename={}, subfolder={}, outputDir={}", filename, subfolder, outputDir);
 
         String url = config.getApi().getBaseUrl() + "/view"
                 + "?filename=" + filename
                 + "&subfolder=" + (subfolder != null ? subfolder : "")
                 + "&type=output";
+
+        log.info("下载URL: {}", url);
 
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             HttpGet httpGet = new HttpGet(url);
@@ -436,6 +372,8 @@ public class ComfyUIService {
             // 节点 4: ArgosTranslateTextNode - 翻译关键字
             String keyword = (String) params.get("keyword");
             String translateFrom = (String) params.getOrDefault("translateFrom", "chinese");
+            log.info("关键字抠图 - 关键字: '{}', 翻译方向: {} -> english", keyword, translateFrom);
+
             workflow = updateWorkflowParams(workflow, "4", "from_translate", translateFrom);
             workflow = updateWorkflowParams(workflow, "4", "to_translate", "english");
             workflow = updateWorkflowParams(workflow, "4", "text", keyword);
@@ -444,6 +382,7 @@ public class ComfyUIService {
             String samModel = (String) params.getOrDefault("samModel", "sam_vit_h (2.56GB)");
             String dinoModel = (String) params.getOrDefault("dinoModel", "GroundingDINO_SwinT_OGC (694MB)");
             Double threshold = (Double) params.getOrDefault("threshold", 0.3);
+            log.info("关键字抠图 - SAM参数: model={}, dino={}, threshold={}", samModel, dinoModel, threshold);
             String detailMethod = (String) params.getOrDefault("detailMethod", "VITMatte(local)");
             Integer detailErode = (Integer) params.getOrDefault("detailErode", 6);
             Integer detailDilate = (Integer) params.getOrDefault("detailDilate", 6);
@@ -464,6 +403,10 @@ public class ComfyUIService {
             workflow = updateWorkflowParams(workflow, "2", "device", device);
 
             // 4. 执行工作流
+            log.info("runKeywordMatting - 准备提交工作流，节点数: {}",
+                     workflow.isObject() ? ((ObjectNode)workflow).size() : 0);
+            String workflowJson = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(workflow);
+            log.info("runKeywordMatting - 完整工作流JSON:\n{}", workflowJson);
             String promptId = executeWorkflow(workflow);
             result.setPromptId(promptId);
 
