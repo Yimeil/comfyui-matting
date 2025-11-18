@@ -37,4 +37,9 @@ public class MattingRequest {
      * Alpha Matting 腐蚀大小
      */
     private Integer alphaMattingErodeSize = 10;
+
+    /**
+     * 关键字（用于关键字抠图）
+     */
+    private String keyword;
 }
