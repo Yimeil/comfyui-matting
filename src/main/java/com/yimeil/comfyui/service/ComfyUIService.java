@@ -236,10 +236,11 @@ public class ComfyUIService {
     public File downloadImage(String filename, String subfolder, String type, String outputDir) throws IOException {
         log.info("下载图片: filename={}, subfolder={}, type={}, outputDir={}", filename, subfolder, type, outputDir);
 
-        String url = config.getApi().getBaseUrl() + "/view"
+        // 修复：添加 /api 前缀，调整参数顺序为 filename&type&subfolder
+        String url = config.getApi().getBaseUrl() + "/api/view"
                 + "?filename=" + filename
-                + "&subfolder=" + (subfolder != null ? subfolder : "")
-                + "&type=" + (type != null ? type : "output");
+                + "&type=" + (type != null ? type : "output")
+                + "&subfolder=" + (subfolder != null ? subfolder : "");
 
         log.info("下载URL: {}", url);
 
