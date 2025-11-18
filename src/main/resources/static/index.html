@@ -430,7 +430,7 @@
             <div v-if="selectedFile && previewUrl" class="mask-drawing-section">
                 <h4>🎨 蒙版绘制区域</h4>
                 <p style="margin-bottom: 15px; color: #666; font-size: 0.9rem;">
-                    在图像上绘制白色区域标记要抠图的部分
+                    默认整张图都会被抠图。使用橡皮擦标记不需要抠图的区域，或点击"清除蒙版"后用画笔精确标记要抠图的部分
                 </p>
 
                 <!-- 绘制工具栏 -->
@@ -703,12 +703,12 @@
                     const ctx = canvas.getContext('2d');
                     this.maskCtx = ctx;
 
-                    // 创建纯黑色蒙版数据（初始全黑 = 不处理任何区域）
+                    // 创建纯白色蒙版数据（初始全白 = 处理整张图）
                     this.maskData = ctx.createImageData(width, height);
                     for (let i = 0; i < this.maskData.data.length; i += 4) {
-                        this.maskData.data[i] = 0;     // R
-                        this.maskData.data[i + 1] = 0; // G
-                        this.maskData.data[i + 2] = 0; // B
+                        this.maskData.data[i] = 255;     // R = 白色
+                        this.maskData.data[i + 1] = 255; // G = 白色
+                        this.maskData.data[i + 2] = 255; // B = 白色
                         this.maskData.data[i + 3] = 255; // A
                     }
 
