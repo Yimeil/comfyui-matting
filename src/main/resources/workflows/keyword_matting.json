@@ -1,0 +1,118 @@
+{
+  "1": {
+    "inputs": {
+      "image": "example.png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "加载图像"
+    }
+  },
+  "2": {
+    "inputs": {
+      "model_name": "GroundingDINO_SwinT_OGC (694MB)"
+    },
+    "class_type": "GroundingDinoModelLoader (segment anything)",
+    "_meta": {
+      "title": "GroundingDINO模型加载器"
+    }
+  },
+  "3": {
+    "inputs": {
+      "model_name": "sam_vit_h_4b8939.pth",
+      "device_mode": "AUTO"
+    },
+    "class_type": "SAMLoader",
+    "_meta": {
+      "title": "SAMLoader"
+    }
+  },
+  "4": {
+    "inputs": {
+      "prompt": "person",
+      "threshold": 0.3,
+      "grounding_dino_model": [
+        "2",
+        0
+      ],
+      "image": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "GroundingDinoSAMSegment (segment anything)",
+    "_meta": {
+      "title": "关键字分割"
+    }
+  },
+  "5": {
+    "inputs": {
+      "sam_model": [
+        "3",
+        0
+      ],
+      "segs": [
+        "4",
+        0
+      ],
+      "image": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "SAMDetectorCombined",
+    "_meta": {
+      "title": "SAM检测器组合"
+    }
+  },
+  "6": {
+    "inputs": {
+      "expand": -3,
+      "incremental_expandrate": 0,
+      "tapered_corners": true,
+      "flip_input": false,
+      "blur_radius": 1,
+      "lerp_alpha": 1,
+      "decay_factor": 1,
+      "fill_holes": false,
+      "mask": [
+        "5",
+        1
+      ]
+    },
+    "class_type": "GrowMaskWithBlur",
+    "_meta": {
+      "title": "遮罩边缘处理"
+    }
+  },
+  "7": {
+    "inputs": {
+      "image": [
+        "1",
+        0
+      ],
+      "mask": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "ETN_ApplyMaskToImage",
+    "_meta": {
+      "title": "应用遮罩到图像"
+    }
+  },
+  "8": {
+    "inputs": {
+      "filename_prefix": "keyword_matting",
+      "images": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "保存图像"
+    }
+  }
+}
