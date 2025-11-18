@@ -1,17 +1,17 @@
-# ComfyUI Matting Service V2.0
+# ComfyUI Matting Service
 
-**基于 Vue 3 + Spring Boot + Claude Skills + ComfyUI 的智能抠图服务**
+**基于 Vue 3 + Spring Boot + ComfyUI 的智能抠图服务**
 
 ## 🎯 项目概述
 
-这是一个全新架构的 ComfyUI 抠图服务，通过 Claude Skills 实现前端与 ComfyUI 的解耦，支持灵活扩展不同的图像处理功能。
+这是一个专业的 ComfyUI 抠图服务，提供简洁高效的图像抠图解决方案，支持普通抠图和关键字抠图两种模式。
 
 ### 核心特性
 
-- 🎨 **Vue 3 前端** - 现代化的响应式用户界面
+- 🎨 **现代化前端** - Vue 3 响应式用户界面
 - ☕ **Spring Boot + JDK 21** - 高性能后端服务
-- 🤖 **Claude Skills 架构** - 基于技能的模块化设计
-- 🔄 **灵活扩展** - 轻松添加新的图像处理技能
+- 🤖 **SAM 智能抠图** - 基于 Segment Anything Model
+- 🔍 **关键字抠图** - 结合 GroundingDINO 的语义抠图
 - 📦 **开箱即用** - Maven 一键构建运行
 
 ## 🏗️ 架构设计
@@ -21,23 +21,17 @@
 ```
 ┌─────────────────┐
 │   Vue 3 前端    │ (用户界面)
-│  index.html     │
+│ index.html      │
+│ matting-        │
+│ keyword.html    │
 └────────┬────────┘
-         │ HTTP POST /api/skill/matting
+         │ HTTP POST /api/matting/*
          ▼
 ┌─────────────────┐
-│ SkillController │ (Spring Boot 控制器)
+│MattingController│ (Spring Boot 控制器)
 │  处理 API 请求  │
 └────────┬────────┘
-         │ 调用 executeMattingSkill()
-         ▼
-┌─────────────────┐
-│ SkillExecutor   │ (技能执行器)
-│ 读取 Skill 定义 │
-│ 验证参数        │
-└────────┬────────┘
-         │ 引用 .claude/skills/matting.md
-         │ 调用 ComfyUIService
+         │ 调用业务方法
          ▼
 ┌─────────────────┐
 │ ComfyUIService  │ (ComfyUI API 封装)
@@ -58,22 +52,16 @@
 
 ```
 comfyui-matting/
-├── .claude/                          # Claude Skills 定义目录
-│   └── skills/
-│       └── matting.md                # 抠图技能定义
-│
 ├── src/
 │   ├── main/
 │   │   ├── java/com/yimeil/comfyui/
 │   │   │   ├── ComfyuiMattingApplication.java  # 启动类
 │   │   │   │
 │   │   │   ├── controller/                     # 控制器层
-│   │   │   │   ├── SkillController.java        # Claude Skills API
-│   │   │   │   ├── MattingController.java      # 传统抠图 API (保留)
+│   │   │   │   ├── MattingController.java      # 抠图 API
 │   │   │   │   └── PageController.java         # 页面路由
 │   │   │   │
 │   │   │   ├── service/                        # 服务层
-│   │   │   │   ├── SkillExecutor.java          # 技能执行器 ⭐ 新增
 │   │   │   │   └── ComfyUIService.java         # ComfyUI 核心服务
 │   │   │   │
 │   │   │   ├── model/                          # 数据模型
@@ -88,14 +76,18 @@ comfyui-matting/
 │   │   └── resources/
 │   │       ├── application.yml                 # 应用配置
 │   │       ├── static/                         # 静态资源
-│   │       │   └── index.html                  # Vue 3 前端 ⭐ 新增
+│   │       │   ├── index.html                  # 普通抠图页面
+│   │       │   └── matting-keyword.html        # 关键字抠图页面
 │   │       └── workflows/                      # 工作流目录
-│   │           └── sam_matting.json
+│   │           ├── sam_matting.json            # SAM 抠图工作流
+│   │           ├── matting_keyword_api.json    # 关键字抠图工作流
+│   │           ├── batch_matting_api.json      # 批量抠图工作流
+│   │           └── ...                         # 其他工作流
 │   │
 │   └── test/                                    # 测试
 │
 ├── pom.xml                                      # Maven 配置 (JDK 21)
-├── README_V2.md                                 # 本文档
+├── README.md                                    # 本文档
 └── output/                                      # 输出目录
 ```
 
@@ -142,138 +134,81 @@ java -jar target/comfyui-matting-2.0.0.jar
 
 ### 访问应用
 
-打开浏览器访问：**http://localhost:8080**
+- **普通抠图**: http://localhost:8080
+- **关键字抠图**: http://localhost:8080/matting-keyword
 
-## 🎨 使用说明
+## 🎨 功能说明
 
-### Web 界面使用
+### 1. 普通抠图 (SAM)
 
-1. **选择功能** - 点击"智能抠图"按钮
-2. **上传图片** - 拖拽或点击上传图片文件
-3. **调整参数** - 根据需要调整 SAM 阈值和边缘优化参数
-4. **执行处理** - 点击"开始执行"按钮
-5. **下载结果** - 处理完成后下载抠图结果
+使用 Segment Anything Model 进行智能抠图，无需关键字。
 
-### API 使用
+**使用步骤:**
+1. 访问 http://localhost:8080
+2. 上传图片
+3. 调整 SAM 参数（可选）
+4. 点击"开始执行"
+5. 下载抠图结果
 
-#### 执行抠图 Skill
+### 2. 关键字抠图 (SAM + GroundingDINO)
+
+基于语义关键字进行精准抠图。
+
+**使用步骤:**
+1. 访问 http://localhost:8080/matting-keyword
+2. 上传图片
+3. 输入关键字（如"红色袜子"、"人脸"、"汽车"）
+4. 调整参数（可选）
+5. 点击"开始抠图"
+6. 下载抠图结果
+
+**支持的关键字示例:**
+- 中文: "红色袜子"、"人脸"、"猫咪"、"汽车"
+- 英文: "red socks"、"face"、"cat"、"car"
+
+## 🔍 API 端点说明
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/api/matting/execute` | POST | 执行普通抠图 |
+| `/api/matting/keyword` | POST | 执行关键字抠图 |
+| `/api/matting/status` | GET | 检查服务器状态 |
+
+### API 使用示例
+
+#### 普通抠图
 
 ```bash
-curl -X POST http://localhost:8080/api/skill/matting \
+curl -X POST http://localhost:8080/api/matting/execute \
   -F "image=@test.jpg" \
   -F "threshold=0.3" \
   -F "alphaMatting=true"
 ```
 
-**响应示例：**
+#### 关键字抠图
+
+```bash
+curl -X POST http://localhost:8080/api/matting/keyword \
+  -F "image=@test.jpg" \
+  -F "keyword=红色袜子" \
+  -F "translateFrom=chinese" \
+  -F "threshold=0.3"
+```
+
+**响应示例:**
 ```json
 {
   "code": 200,
   "message": "success",
   "data": {
     "success": true,
-    "outputFilename": "matting_result_12345.png",
-    "outputUrl": "/output/matting_result_12345.png",
+    "outputFilename": "img_00005_.png",
+    "outputUrl": "/output/img_00005_.png",
     "promptId": "abc-123-def",
     "executionTime": 5230
   }
 }
 ```
-
-#### 获取可用 Skills
-
-```bash
-curl http://localhost:8080/api/skill/list
-```
-
-#### 获取 Skill 信息
-
-```bash
-curl http://localhost:8080/api/skill/matting/info
-```
-
-## 🔧 添加新的 Skill
-
-### 步骤 1: 创建 Skill 定义
-
-在 `.claude/skills/` 目录下创建新的 Skill 定义文件，例如 `enhance.md`:
-
-```markdown
-# Image Enhancement Skill
-
-This skill provides image enhancement capabilities.
-
-## Input Parameters
-- imagePath: Path to input image
-- brightness: Brightness adjustment (-100 to 100)
-- contrast: Contrast adjustment (-100 to 100)
-
-## Output
-- success: Operation status
-- outputFilename: Enhanced image filename
-- outputUrl: URL to download result
-```
-
-### 步骤 2: 在 SkillExecutor 中实现
-
-```java
-public MattingResult executeEnhanceSkill(MultipartFile imageFile, EnhanceRequest request) {
-    log.info("【Enhance Skill】开始执行");
-
-    // 验证 Skill 定义
-    validateSkillExists("enhance");
-
-    // 调用 ComfyUIService 执行增强任务
-    return comfyUIService.runEnhancement(imageFile, request);
-}
-```
-
-### 步骤 3: 添加 Controller 端点
-
-```java
-@PostMapping("/enhance")
-public ApiResponse<MattingResult> executeEnhanceSkill(
-        @RequestParam("image") MultipartFile imageFile,
-        @RequestParam(value = "brightness", required = false) Integer brightness,
-        @RequestParam(value = "contrast", required = false) Integer contrast) {
-    // 执行 Enhance Skill
-    return skillExecutor.executeEnhanceSkill(imageFile, request);
-}
-```
-
-### 步骤 4: 更新前端 UI
-
-在 Vue 前端添加新的 Skill 按钮和参数控制。
-
-## 📊 技术栈
-
-| 层级 | 技术 | 版本 |
-|------|------|------|
-| **前端** | Vue 3 | 3.x (CDN) |
-| **前端库** | Axios | Latest |
-| **后端框架** | Spring Boot | 3.2.0 |
-| **Java** | OpenJDK | 21 |
-| **构建工具** | Maven | 3.9+ |
-| **HTTP 客户端** | Apache HttpClient | 5.3 |
-| **JSON 处理** | Jackson | (Spring Boot 内置) |
-| **日志** | Slf4j + Logback | (Spring Boot 内置) |
-
-## 🔍 API 端点说明
-
-### Claude Skills API
-
-| 端点 | 方法 | 说明 |
-|------|------|------|
-| `/api/skill/matting` | POST | 执行抠图 Skill |
-| `/api/skill/list` | GET | 获取所有可用 Skills |
-| `/api/skill/{skillName}/info` | GET | 获取特定 Skill 信息 |
-
-### 传统 API (向后兼容)
-
-| 端点 | 方法 | 说明 |
-|------|------|------|
-| `/api/matting/execute` | POST | 直接执行抠图 |
-| `/api/matting/status` | GET | 检查服务器状态 |
 
 ## ⚙️ 配置参数
 
@@ -291,7 +226,7 @@ comfyui:
 
   workflow:
     directory: workflows              # 工作流目录
-    default: sam_matting.json         # 默认工作流
+    default-workflow: sam_matting.json # 默认工作流
 
 output:
   directory: output                   # 输出目录
@@ -304,35 +239,18 @@ spring:
       max-request-size: 50MB          # 最大请求大小
 ```
 
-## 🌟 版本对比
+## 📊 技术栈
 
-| 特性 | V1.0 (Thymeleaf) | V2.0 (Vue + Skills) |
-|------|------------------|---------------------|
-| **JDK 版本** | 17 | 21 ⭐ |
-| **前端技术** | Thymeleaf | Vue 3 ⭐ |
-| **架构模式** | MVC | Skills-based ⭐ |
-| **扩展性** | 中等 | 优秀 ⭐ |
-| **模块化** | 低 | 高 ⭐ |
-| **用户体验** | 良好 | 优秀 ⭐ |
-| **API 设计** | RESTful | RESTful + Skills ⭐ |
-
-## 🔒 Claude Skills 架构优势
-
-### 1. 解耦与模块化
-- 前端只需关注 Skill 名称，无需了解底层实现
-- 每个 Skill 独立定义，易于维护和测试
-
-### 2. 易于扩展
-- 添加新功能只需创建新 Skill 定义
-- 无需修改核心业务逻辑
-
-### 3. 统一管理
-- 所有 Skills 定义集中在 `.claude/skills/` 目录
-- 便于版本控制和文档管理
-
-### 4. 灵活组合
-- 未来可以实现 Skill 链式调用
-- 支持复杂的图像处理流程
+| 层级 | 技术 | 版本 |
+|------|------|------|
+| **前端** | Vue 3 | 3.x (CDN) |
+| **前端库** | Axios | Latest |
+| **后端框架** | Spring Boot | 3.2.0 |
+| **Java** | OpenJDK | 21 |
+| **构建工具** | Maven | 3.9+ |
+| **HTTP 客户端** | Apache HttpClient | 5.3 |
+| **JSON 处理** | Jackson | (Spring Boot 内置) |
+| **日志** | Slf4j + Logback | (Spring Boot 内置) |
 
 ## 🐛 故障排查
 
@@ -362,13 +280,18 @@ java -version
 mvn clean install -DskipTests -U
 ```
 
-### Skill 执行失败
+### 关键字抠图中文乱码
 
-检查日志中的详细错误信息，常见原因：
-- Skill 定义文件不存在
-- 参数验证失败
-- ComfyUI 服务不可用
-- 工作流文件缺失或格式错误
+确保后端正确设置 UTF-8 编码。已在 `ComfyUIService.java` 中使用 `ContentType.APPLICATION_JSON` 解决。
+
+### 前端显示"抠图失败: undefined"
+
+确保前端正确解析 `ApiResponse` 格式：
+```javascript
+if (result.code === 200 && result.data && result.data.success) {
+    // 使用 result.data.outputUrl
+}
+```
 
 ## 📚 开发指南
 
@@ -448,4 +371,4 @@ MIT License
 
 ---
 
-**V2.0 - 更智能、更模块化、更易扩展！** 🚀
+**简洁、高效、专业的抠图服务！** 🚀

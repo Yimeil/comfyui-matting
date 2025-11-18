@@ -519,7 +519,7 @@
                     this.processing = true;
                     this.errorMessage = null;
                     this.result = null;
-                    this.progressMessage = '正在执行 Matting Skill...';
+                    this.progressMessage = '正在处理图像抠图...';
 
                     try {
                         const formData = new FormData();
@@ -530,7 +530,7 @@
                         formData.append('alphaMattingBackgroundThreshold', this.params.alphaMattingBackgroundThreshold);
                         formData.append('alphaMattingErodeSize', this.params.alphaMattingErodeSize);
 
-                        const response = await axios.post('/api/skill/matting', formData, {
+                        const response = await axios.post('/api/matting/execute', formData, {
                             headers: {
                                 'Content-Type': 'multipart/form-data'
                             }
@@ -543,7 +543,7 @@
                             this.errorMessage = response.data.message || '处理失败';
                         }
                     } catch (error) {
-                        console.error('执行 Skill 失败:', error);
+                        console.error('抠图失败:', error);
                         this.errorMessage = error.response?.data?.message || error.message || '网络错误';
                     } finally {
                         this.processing = false;
