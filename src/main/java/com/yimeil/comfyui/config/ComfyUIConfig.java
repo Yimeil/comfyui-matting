@@ -51,6 +51,6 @@ public class ComfyUIConfig {
         /**
          * 默认工作流文件名
          */
-        private String defaultWorkflow = "sam_matting.json";
+        private String defaultWorkflow = "sam_mask_matting_api.json";
     }
 }

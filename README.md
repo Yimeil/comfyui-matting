@@ -226,7 +226,7 @@ comfyui:
 
   workflow:
     directory: workflows              # 工作流目录
-    default-workflow: sam_matting.json # 默认工作流
+    default-workflow: sam_mask_matting_api.json # 默认工作流
 
 output:
   directory: output                   # 输出目录
