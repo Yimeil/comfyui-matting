@@ -1,1 +1,216 @@
-{"id":"e0f17b8a-1876-4ae1-8586-cc42f4515dd3","revision":0,"last_node_id":17,"last_link_id":19,"nodes":[{"id":1,"type":"DualCLIPLoader","pos":[709.2413233262373,2028.991910110725],"size":[315,130],"flags":{},"order":0,"mode":0,"inputs":[{"label":"clip_name1","localized_name":"CLIP名称1","name":"clip_name1","type":"COMBO","widget":{"name":"clip_name1"},"link":null},{"label":"clip_name2","localized_name":"CLIP名称2","name":"clip_name2","type":"COMBO","widget":{"name":"clip_name2"},"link":null},{"label":"type","localized_name":"类型","name":"type","type":"COMBO","widget":{"name":"type"},"link":null},{"label":"device","localized_name":"设备","name":"device","shape":7,"type":"COMBO","widget":{"name":"device"},"link":null}],"outputs":[{"label":"CLIP","localized_name":"CLIP","name":"CLIP","type":"CLIP","links":[1,18]}],"properties":{"cnr_id":"comfy-core","ver":"0.3.59","Node name for S&R":"DualCLIPLoader","ue_properties":{"widget_ue_connectable":{},"version":"7.1","input_ue_unconnectable":{}},"models":[{"name":"clip_l.safetensors","url":"https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors?download=true","directory":"text_encoders"},{"name":"t5xxl_fp16.safetensors","url":"https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp16.safetensors?download=true","directory":"text_encoders"}]},"widgets_values":["clip_l.safetensors","t5xxl_fp8_e4m3fn.safetensors","flux","default"]},{"id":2,"type":"CLIPTextEncode","pos":[759.2413233262373,1948.991910110725],"size":[425.2799987792969,180.61000061035156],"flags":{"collapsed":true},"order":7,"mode":0,"inputs":[{"label":"clip","localized_name":"clip","name":"clip","type":"CLIP","link":1},{"label":"text","localized_name":"文本","name":"text","type":"STRING","widget":{"name":"text"},"link":null}],"outputs":[{"label":"CONDITIONING","localized_name":"条件","name":"CONDITIONING","type":"CONDITIONING","slot_index":0,"links":[9]}],"title":"CLIP Text Encode (Negative Prompt)","properties":{"cnr_id":"comfy-core","ver":"0.3.59","Node name for S&R":"CLIPTextEncode","ue_properties":{"widget_ue_connectable":{},"version":"7.1","input_ue_unconnectable":{}}},"widgets_values":[""],"color":"#322","bgcolor":"#533"},{"id":3,"type":"UNETLoader","pos":[1199.2413233262373,1458.991910110725],"size":[315,82],"flags":{},"order":1,"mode":0,"inputs":[{"label":"unet_name","localized_name":"UNet名称","name":"unet_name","type":"COMBO","widget":{"name":"unet_name"},"link":null},{"label":"weight_dtype","localized_name":"数据类型","name":"weight_dtype","type":"COMBO","widget":{"name":"weight_dtype"},"link":null}],"outputs":[{"label":"MODEL","localized_name":"模型","name":"MODEL","type":"MODEL","slot_index":0,"links":[3]}],"properties":{"cnr_id":"comfy-core","ver":"0.3.59","Node name for S&R":"UNETLoader","ue_properties":{"widget_ue_connectable":{},"version":"7.1","input_ue_unconnectable":{}},"models":[{"name":"flux1-fill-dev.safetensors","url":"https://huggingface.co/black-forest-labs/FLUX.1-Fill-dev/blob/main/flux1-fill-dev.safetensors","directory":"diffusion_models"}]},"widgets_values":["flux1-fill-fp8_v10.safetensors","default"]},{"id":4,"type":"FluxGuidance","pos":[1199.2413233262373,1608.991910110725],"size":[317.3999938964844,58],"flags":{},"order":10,"mode":0,"inputs":[{"label":"conditioning","localized_name":"条件","name":"conditioning","type":"CONDITIONING","link":2},{"label":"guidance","localized_name":"引导","name":"guidance","type":"FLOAT","widget":{"name":"guidance"},"link":null}],"outputs":[{"label":"CONDITIONING","localized_name":"条件","name":"CONDITIONING","type":"CONDITIONING","slot_index":0,"links":[8]}],"properties":{"cnr_id":"comfy-core","ver":"0.3.59","Node name for S&R":"FluxGuidance","ue_properties":{"widget_ue_connectable":{},"version":"7.1","input_ue_unconnectable":{}}},"widgets_values":[30]},{"id":5,"type":"DifferentialDiffusion","pos":[1219.2413233262373,1748.991910110725],"size":[277.20001220703125,58],"flags":{},"order":8,"mode":0,"inputs":[{"label":"model","localized_name":"模型","name":"model","type":"MODEL","link":3},{"label":"strength","localized_name":"strength","name":"strength","shape":7,"type":"FLOAT","widget":{"name":"strength"},"link":null}],"outputs":[{"label":"MODEL","localized_name":"模型","name":"MODEL","type":"MODEL","slot_index":0,"links":[4]}],"properties":{"cnr_id":"comfy-core","ver":"0.3.59","Node name for S&R":"DifferentialDiffusion","ue_properties":{"widget_ue_connectable":{},"version":"7.1","input_ue_unconnectable":{}}},"widgets_values":[1]},{"id":6,"type":"KSampler","pos":[1559.2413233262373,1468.991910110725],"size":[315,474.0000000000001],"flags":{},"order":12,"mode":0,"inputs":[{"label":"model","localized_name":"模型","name":"model","type":"MODEL","link":4},{"label":"positive","localized_name":"正面条件","name":"positive","type":"CONDITIONING","link":5},{"label":"negative","localized_name":"负面条件","name":"negative","type":"CONDITIONING","link":6},{"label":"latent_image","localized_name":"Latent图像","name":"latent_image","type":"LATENT","link":7},{"label":"seed","localized_name":"种子","name":"seed","type":"INT","widget":{"name":"seed"},"link":null},{"label":"steps","localized_name":"步数","name":"steps","type":"INT","widget":{"name":"steps"},"link":null},{"label":"cfg","localized_name":"cfg","name":"cfg","type":"FLOAT","widget":{"name":"cfg"},"link":null},{"label":"sampler_name","localized_name":"采样器名称","name":"sampler_name","type":"COMBO","widget":{"name":"sampler_name"},"link":null},{"label":"scheduler","localized_name":"调度器","name":"scheduler","type":"COMBO","widget":{"name":"scheduler"},"link":null},{"label":"denoise","localized_name":"降噪","name":"denoise","type":"FLOAT","widget":{"name":"denoise"},"link":null}],"outputs":[{"label":"LATENT","localized_name":"Latent","name":"LATENT","type":"LATENT","slot_index":0,"links":[13]}],"properties":{"cnr_id":"comfy-core","ver":"0.3.59","Node name for S&R":"KSampler","ue_properties":{"widget_ue_connectable":{},"version":"7.1","input_ue_unconnectable":{}}},"widgets_values":[754105378727203,"randomize",20,1,"euler","normal",1]},{"id":7,"type":"InpaintModelConditioning","pos":[1209.2413233262373,2028.991910110725],"size":[302.3999938964844,138],"flags":{},"order":11,"mode":0,"inputs":[{"label":"positive","localized_name":"正面条件","name":"positive","type":"CONDITIONING","link":8},{"label":"negative","localized_name":"负面条件","name":"negative","type":"CONDITIONING","link":9},{"label":"vae","localized_name":"vae","name":"vae","type":"VAE","link":10},{"label":"pixels","localized_name":"像素","name":"pixels","type":"IMAGE","link":11},{"label":"mask","localized_name":"遮罩","name":"mask","type":"MASK","link":12},{"label":"noise_mask","localized_name":"噪波遮罩","name":"noise_mask","type":"BOOLEAN","widget":{"name":"noise_mask"},"link":null}],"outputs":[{"label":"positive","localized_name":"正面条件","name":"positive","type":"CONDITIONING","slot_index":0,"links":[5]},{"label":"negative","localized_name":"负面条件","name":"negative","type":"CONDITIONING","slot_index":1,"links":[6]},{"label":"latent","localized_name":"Latent","name":"latent","type":"LATENT","slot_index":2,"links":[7]}],"properties":{"cnr_id":"comfy-core","ver":"0.3.59","Node name for S&R":"InpaintModelConditioning","ue_properties":{"widget_ue_connectable":{},"version":"7.1","input_ue_unconnectable":{}}},"widgets_values":[false]},{"id":8,"type":"VAELoader","pos":[1209.2413233262373,1888.991910110725],"size":[315,58],"flags":{},"order":2,"mode":0,"inputs":[{"label":"vae_name","localized_name":"vae名称","name":"vae_name","type":"COMBO","widget":{"name":"vae_name"},"link":null}],"outputs":[{"label":"VAE","localized_name":"VAE","name":"VAE","type":"VAE","slot_index":0,"links":[10,14]}],"properties":{"cnr_id":"comfy-core","ver":"0.3.59","Node name for S&R":"VAELoader","ue_properties":{"widget_ue_connectable":{},"version":"7.1","input_ue_unconnectable":{}},"models":[{"name":"ae.safetensors","url":"https://huggingface.co/black-forest-labs/FLUX.1-schnell/resolve/main/ae.safetensors?download=true","directory":"vae"}]},"widgets_values":["ae.safetensors"]},{"id":9,"type":"VAEDecode","pos":[1579.2413233262373,2078.9919101107253],"size":[210,46],"flags":{},"order":13,"mode":0,"inputs":[{"label":"samples","localized_name":"Latent","name":"samples","type":"LATENT","link":13},{"label":"vae","localized_name":"vae","name":"vae","type":"VAE","link":14}],"outputs":[{"label":"IMAGE","localized_name":"图像","name":"IMAGE","type":"IMAGE","slot_index":0,"links":[15]}],"properties":{"cnr_id":"comfy-core","ver":"0.3.59","Node name for S&R":"VAEDecode","ue_properties":{"widget_ue_connectable":{},"version":"7.1","input_ue_unconnectable":{}}},"widgets_values":[]},{"id":10,"type":"easy imageRemBg","pos":[1929.2413233262373,1398.991910110725],"size":[270,150],"flags":{},"order":14,"mode":0,"inputs":[{"label":"images","localized_name":"图像","name":"images","type":"IMAGE","link":15},{"label":"rem_mode","localized_name":"移除模式","name":"rem_mode","type":"COMBO","widget":{"name":"rem_mode"},"link":null},{"label":"image_output","localized_name":"图像输出","name":"image_output","type":"COMBO","widget":{"name":"image_output"},"link":null},{"label":"save_prefix","localized_name":"save_prefix","name":"save_prefix","type":"STRING","widget":{"name":"save_prefix"},"link":null},{"label":"torchscript_jit","localized_name":"torchscript_jit","name":"torchscript_jit","shape":7,"type":"BOOLEAN","widget":{"name":"torchscript_jit"},"link":null},{"label":"add_background","localized_name":"添加背景","name":"add_background","shape":7,"type":"COMBO","widget":{"name":"add_background"},"link":null},{"label":"refine_foreground","localized_name":"优化前景","name":"refine_foreground","shape":7,"type":"BOOLEAN","widget":{"name":"refine_foreground"},"link":null}],"outputs":[{"label":"image","localized_name":"图像","name":"image","type":"IMAGE","links":[16,17]},{"label":"mask","localized_name":"遮罩","name":"mask","type":"MASK","links":null}],"properties":{"cnr_id":"comfyui-easy-use","ver":"1.3.4","Node name for S&R":"easy imageRemBg","ue_properties":{"widget_ue_connectable":{},"input_ue_unconnectable":{},"version":"7.4.1"}},"widgets_values":["BEN2","Preview","ComfyUI",true,"none",false]},{"id":11,"type":"Note","pos":[-460.7586766737627,1248.991910110725],"size":[730,360],"flags":{},"order":3,"mode":0,"inputs":[],"outputs":[],"properties":{"ue_properties":{"widget_ue_connectable":{},"version":"7.4.1","input_ue_unconnectable":{}}},"widgets_values":["\n蒙版使用\n\n1.Clear（清除）打开蒙版时先Clear\n\n2.Cancel（取消）放弃当前编辑\n\n3.Save to node（保存到节点）将当前绘制的蒙版保存并应用到工作流\n\n4.Thickness（厚度/画笔大小）鼠标滚动调整大小\n\n5.Opacity（不透明度）调整画笔透明度\n\n6.Color: white（颜色：白色）根据背景切换颜色，尽量保证能区分背景色和画笔颜色"],"color":"#432","bgcolor":"#653"},{"id":12,"type":"GoogleTranslateTextNode","pos":[729.2413233262373,1478.991910110725],"size":[400,200],"flags":{},"order":4,"mode":0,"inputs":[{"label":"from_translate","localized_name":"from_translate","name":"from_translate","type":"COMBO","widget":{"name":"from_translate"},"link":null},{"label":"to_translate","localized_name":"to_translate","name":"to_translate","type":"COMBO","widget":{"name":"to_translate"},"link":null},{"label":"manual_translate","localized_name":"manual_translate","name":"manual_translate","type":"BOOLEAN","widget":{"name":"manual_translate"},"link":null},{"label":"text","localized_name":"text","name":"text","type":"STRING","widget":{"name":"text"},"link":null}],"outputs":[{"label":"text","localized_name":"text","name":"text","type":"STRING","links":[19]}],"properties":{"cnr_id":"comfyui_custom_nodes_alekpet","ver":"f75fa7d544ee68eba0cf14a7ebb559a19fcf2f0d","Node name for S&R":"GoogleTranslateTextNode","ue_properties":{"widget_ue_connectable":{},"input_ue_unconnectable":{},"version":"7.4.1"}},"widgets_values":["auto","en",false,"Manual Trasnlate","水晶球的底部缺失修复"]},{"id":13,"type":"LoadImage","pos":[329.2413233262373,1378.991910110725],"size":[330,520],"flags":{},"order":5,"mode":0,"inputs":[{"label":"image","localized_name":"图像","name":"image","type":"COMBO","widget":{"name":"image"},"link":null},{"label":"upload","localized_name":"选择文件上传","name":"upload","type":"IMAGEUPLOAD","widget":{"name":"upload"},"link":null}],"outputs":[{"label":"IMAGE","localized_name":"图像","name":"IMAGE","type":"IMAGE","slot_index":0,"links":[11]},{"label":"MASK","localized_name":"遮罩","name":"MASK","type":"MASK","slot_index":1,"links":[12]}],"properties":{"cnr_id":"comfy-core","ver":"0.3.59","Node name for S&R":"LoadImage","ue_properties":{"widget_ue_connectable":{},"version":"7.1","input_ue_unconnectable":{}}},"widgets_values":["clipspace/clipspace-mask-4714678.799999952.png [input]","image"]},{"id":16,"type":"CLIPTextEncode","pos":[719.2413233262373,1728.991910110725],"size":[422.8500061035156,164.30999755859375],"flags":{},"order":9,"mode":0,"inputs":[{"label":"clip","localized_name":"clip","name":"clip","type":"CLIP","link":18},{"label":"text","localized_name":"文本","name":"text","type":"STRING","widget":{"name":"text"},"link":19}],"outputs":[{"label":"CONDITIONING","localized_name":"条件","name":"CONDITIONING","type":"CONDITIONING","slot_index":0,"links":[2]}],"title":"CLIP Text Encode (Positive Prompt)","properties":{"cnr_id":"comfy-core","ver":"0.3.59","Node name for S&R":"CLIPTextEncode","ue_properties":{"widget_ue_connectable":{},"version":"7.1","input_ue_unconnectable":{}}},"widgets_values":[""],"color":"#233","bgcolor":"#355"},{"id":14,"type":"PreviewImage","pos":[1929.2413233262373,1728.991910110725],"size":[450,246],"flags":{},"order":15,"mode":4,"inputs":[{"label":"images","localized_name":"图像","name":"images","type":"IMAGE","link":16}],"outputs":[],"properties":{"cnr_id":"comfy-core","ver":"0.3.67","Node name for S&R":"PreviewImage","ue_properties":{"widget_ue_connectable":{},"input_ue_unconnectable":{},"version":"7.4.1"}},"widgets_values":[]},{"id":15,"type":"SaveImage","pos":[330,1960],"size":[290,270],"flags":{},"order":16,"mode":0,"inputs":[{"label":"images","localized_name":"图片","name":"images","type":"IMAGE","link":17},{"label":"filename_prefix","localized_name":"文件名前缀","name":"filename_prefix","type":"STRING","widget":{"name":"filename_prefix"},"link":null}],"outputs":[],"properties":{"cnr_id":"comfy-core","ver":"0.3.67","Node name for S&R":"SaveImage","ue_properties":{"widget_ue_connectable":{},"input_ue_unconnectable":{},"version":"7.4.1"}},"widgets_values":["second-matting/img"],"color":"#232","bgcolor":"#353"},{"id":17,"type":"Note","pos":[-460.7586766737627,1678.991910110725],"size":[740,240],"flags":{},"order":6,"mode":0,"inputs":[],"outputs":[],"properties":{"ue_properties":{"widget_ue_connectable":{},"version":"7.4.1","input_ue_unconnectable":{}}},"widgets_values":["\n对于需要局部修复的图片\n\n1.上传图片后右击图片选择“Open in MaskEditor I Image Canvas”会弹出蒙版绘制页面进行蒙版绘制并点击“Save to node”保存\n\n2.在节点 #12 输入描述语言；比如“水晶球的底部缺失修复”\n\n3.点击节点 #15 上方会出现一个蓝色的按钮，点击蓝色运行当前抠图\n"],"color":"#432","bgcolor":"#653"}],"links":[[1,1,0,2,0,"CLIP"],[2,16,0,4,0,"CONDITIONING"],[3,3,0,5,0,"MODEL"],[4,5,0,6,0,"MODEL"],[5,7,0,6,1,"CONDITIONING"],[6,7,1,6,2,"CONDITIONING"],[7,7,2,6,3,"LATENT"],[8,4,0,7,0,"CONDITIONING"],[9,2,0,7,1,"CONDITIONING"],[10,8,0,7,2,"VAE"],[11,13,0,7,3,"IMAGE"],[12,13,1,7,4,"MASK"],[13,6,0,9,0,"LATENT"],[14,8,0,9,1,"VAE"],[15,9,0,10,0,"IMAGE"],[16,10,0,14,0,"IMAGE"],[17,10,0,15,0,"IMAGE"],[18,1,0,16,0,"CLIP"],[19,12,0,16,1,"STRING"]],"groups":[{"id":1,"title":"基于第一次抠图后的单张图片局部修复","bounding":[300,1220,2120,1020],"color":"#3f789e","font_size":80,"flags":{}}],"config":{},"extra":{"ue_links":[],"ds":{"scale":0.7777015437392821,"offset":[501.99557565920634,-1053.6514770935216]}},"version":0.4}
+{
+  "1": {
+    "inputs": {
+      "clip_name1": "clip_l.safetensors",
+      "clip_name2": "t5xxl_fp8_e4m3fn.safetensors",
+      "type": "flux",
+      "device": "default"
+    },
+    "class_type": "DualCLIPLoader",
+    "_meta": {
+      "title": "双CLIP加载器"
+    }
+  },
+  "2": {
+    "inputs": {
+      "text": "",
+      "clip": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Negative Prompt)"
+    }
+  },
+  "3": {
+    "inputs": {
+      "unet_name": "flux1-fill-fp8_v10.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "UNet加载器"
+    }
+  },
+  "4": {
+    "inputs": {
+      "guidance": 30,
+      "conditioning": [
+        "16",
+        0
+      ]
+    },
+    "class_type": "FluxGuidance",
+    "_meta": {
+      "title": "Flux引导"
+    }
+  },
+  "5": {
+    "inputs": {
+      "strength": 1,
+      "model": [
+        "3",
+        0
+      ]
+    },
+    "class_type": "DifferentialDiffusion",
+    "_meta": {
+      "title": "差异扩散DifferentialDiffusion"
+    }
+  },
+  "6": {
+    "inputs": {
+      "seed": 754105378727203,
+      "steps": 20,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "normal",
+      "denoise": 1,
+      "model": [
+        "5",
+        0
+      ],
+      "positive": [
+        "7",
+        0
+      ],
+      "negative": [
+        "7",
+        1
+      ],
+      "latent_image": [
+        "7",
+        2
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "K采样器"
+    }
+  },
+  "7": {
+    "inputs": {
+      "noise_mask": false,
+      "positive": [
+        "4",
+        0
+      ],
+      "negative": [
+        "2",
+        0
+      ],
+      "vae": [
+        "8",
+        0
+      ],
+      "pixels": [
+        "13",
+        0
+      ],
+      "mask": [
+        "13",
+        1
+      ]
+    },
+    "class_type": "InpaintModelConditioning",
+    "_meta": {
+      "title": "内补模型条件"
+    }
+  },
+  "8": {
+    "inputs": {
+      "vae_name": "ae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "加载VAE"
+    }
+  },
+  "9": {
+    "inputs": {
+      "samples": [
+        "6",
+        0
+      ],
+      "vae": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE解码"
+    }
+  },
+  "10": {
+    "inputs": {
+      "rem_mode": "BEN2",
+      "image_output": "Preview",
+      "save_prefix": "ComfyUI",
+      "torchscript_jit": true,
+      "add_background": "none",
+      "refine_foreground": false,
+      "images": [
+        "9",
+        0
+      ]
+    },
+    "class_type": "easy imageRemBg",
+    "_meta": {
+      "title": "图像背景移除"
+    }
+  },
+  "12": {
+    "inputs": {
+      "from_translate": "auto",
+      "to_translate": "en",
+      "manual_translate": false,
+      "Manual Trasnlate": "Manual Trasnlate",
+      "text": "水晶球的底部缺失修复"
+    },
+    "class_type": "GoogleTranslateTextNode",
+    "_meta": {
+      "title": "Google Translate Text Node"
+    }
+  },
+  "13": {
+    "inputs": {
+      "image": "clipspace/clipspace-mask-4714678.799999952.png [input]"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "加载图像"
+    }
+  },
+  "15": {
+    "inputs": {
+      "filename_prefix": "second-matting/img",
+      "images": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "保存图像"
+    }
+  },
+  "16": {
+    "inputs": {
+      "text": [
+        "12",
+        0
+      ],
+      "clip": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Positive Prompt)"
+    }
+  }
+}
