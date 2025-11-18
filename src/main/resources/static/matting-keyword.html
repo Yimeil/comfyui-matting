@@ -745,14 +745,15 @@
 
                 const result = await response.json();
 
-                if (result.success) {
+                if (result.code === 200 && result.data && result.data.success) {
                     // 显示结果
                     document.getElementById('originalImage').src = previewImage.src;
-                    document.getElementById('resultImage').src = result.outputUrl;
-                    resultFilename = result.outputFilename;
+                    document.getElementById('resultImage').src = result.data.outputUrl;
+                    resultFilename = result.data.outputFilename;
                     document.getElementById('resultSection').classList.add('show');
                 } else {
-                    alert('抠图失败: ' + result.errorMessage);
+                    const errorMsg = result.message || (result.data && result.data.errorMessage) || '未知错误';
+                    alert('抠图失败: ' + errorMsg);
                 }
             } catch (error) {
                 alert('请求失败: ' + error.message);
