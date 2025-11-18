@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>关键字抠图 - Keyword Matting</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+                         'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 1200px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .workflow-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .workflow-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .section:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 2px;
+        }
+
+        .upload-area {
+            border: 2px dashed #ced4da;
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #f0f3ff;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: #6c757d;
+            font-size: 14px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 500;
+            color: #495057;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .slider-container {
+            margin-top: 8px;
+        }
+
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e9ecef;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+
+        .slider-value {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            margin-left: 10px;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .advanced-options {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 15px;
+        }
+
+        .advanced-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .advanced-header h3 {
+            font-size: 15px;
+            color: #495057;
+            font-weight: 600;
+        }
+
+        .toggle-icon {
+            font-size: 12px;
+            color: #6c757d;
+            transition: transform 0.3s ease;
+        }
+
+        .toggle-icon.open {
+            transform: rotate(180deg);
+        }
+
+        .advanced-content {
+            display: none;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .advanced-content.show {
+            display: block;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .result-section {
+            margin-top: 30px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .result-item {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .result-item h3 {
+            font-size: 16px;
+            color: #495057;
+            margin-bottom: 15px;
+        }
+
+        .result-item img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #0c5460;
+        }
+
+        .info-box strong {
+            display: block;
+            margin-bottom: 5px;
+            color: #004085;
+        }
+
+        .tag {
+            display: inline-block;
+            background: #e9ecef;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin: 4px;
+            color: #495057;
+        }
+
+        .tag.active {
+            background: #667eea;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div style="text-align: left; margin-bottom: 20px;">
+                <button onclick="window.location.href='index.html'"
+                        style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);
+                               padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px;
+                               transition: all 0.3s ease;">
+                    ← 返回首页
+                </button>
+            </div>
+            <h1>🎨 关键字抠图工具</h1>
+            <p>Keyword-Based Image Matting - 基于 SAM 和 GroundingDINO 的智能抠图</p>
+        </div>
+
+        <div class="content">
+            <div class="info-box">
+                <strong>使用说明：</strong>
+                1. 上传需要抠图的图片<br>
+                2. 输入描述关键字（中文或英文），例如"红色袜子"、"人脸"、"汽车"等<br>
+                3. 调整参数（可选），点击"开始抠图"即可
+            </div>
+
+            <div class="workflow-grid">
+                <!-- 图片上传区域 -->
+                <div class="section">
+                    <div class="section-title">📷 图片上传</div>
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">📁</div>
+                        <div class="upload-text">
+                            <strong>点击或拖拽上传图片</strong><br>
+                            支持 JPG、PNG 格式
+                        </div>
+                        <input type="file" id="fileInput" class="file-input" accept="image/*">
+                    </div>
+                    <img id="previewImage" class="preview-image" alt="预览图片">
+                </div>
+
+                <!-- 关键字输入 -->
+                <div class="section">
+                    <div class="section-title">🔍 关键字设置</div>
+
+                    <div class="form-group">
+                        <label class="form-label">描述关键字（中文/英文）</label>
+                        <input type="text" id="keywordInput" class="form-input"
+                               placeholder="例如：红色袜子、人脸、汽车、猫咪等"
+                               value="红色袜子">
+                        <div style="margin-top: 10px;">
+                            <span class="tag" onclick="setKeyword('人脸')">人脸</span>
+                            <span class="tag" onclick="setKeyword('红色袜子')">红色袜子</span>
+                            <span class="tag" onclick="setKeyword('汽车')">汽车</span>
+                            <span class="tag" onclick="setKeyword('猫咪')">猫咪</span>
+                            <span class="tag" onclick="setKeyword('狗')">狗</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">翻译方向</label>
+                        <select id="translateFrom" class="form-select">
+                            <option value="chinese">中文</option>
+                            <option value="english">英文</option>
+                            <option value="auto">自动检测</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SAM 模型参数 -->
+            <div class="section">
+                <div class="section-title">⚙️ 模型参数</div>
+
+                <div class="workflow-grid">
+                    <div class="form-group">
+                        <label class="form-label">SAM 模型</label>
+                        <select id="samModel" class="form-select">
+                            <option value="sam_vit_h (2.56GB)" selected>sam_vit_h (2.56GB) - 高精度</option>
+                            <option value="sam_vit_l (1.25GB)">sam_vit_l (1.25GB) - 平衡</option>
+                            <option value="sam_vit_b (375MB)">sam_vit_b (375MB) - 快速</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Grounding DINO 模型</label>
+                        <select id="dinoModel" class="form-select">
+                            <option value="GroundingDINO_SwinT_OGC (694MB)" selected>GroundingDINO_SwinT_OGC (694MB)</option>
+                            <option value="GroundingDINO_SwinB (938MB)">GroundingDINO_SwinB (938MB)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            检测阈值 (Threshold)
+                            <span class="slider-value" id="thresholdValue">0.30</span>
+                        </label>
+                        <input type="range" id="threshold" class="slider"
+                               min="0.1" max="1.0" step="0.05" value="0.3">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">细节处理方法</label>
+                        <select id="detailMethod" class="form-select">
+                            <option value="VITMatte(local)" selected>VITMatte(local) - 推荐</option>
+                            <option value="PyMatting">PyMatting</option>
+                            <option value="GuidedFilter">GuidedFilter</option>
+                            <option value="None">None - 不处理</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 高级选项 -->
+                <div class="advanced-options">
+                    <div class="advanced-header" onclick="toggleAdvanced()">
+                        <h3>高级选项</h3>
+                        <span class="toggle-icon" id="toggleIcon">▼</span>
+                    </div>
+                    <div class="advanced-content" id="advancedContent">
+                        <div class="workflow-grid">
+                            <div class="form-group">
+                                <label class="form-label">
+                                    细节腐蚀 (Detail Erode)
+                                    <span class="slider-value" id="detailErodeValue">6</span>
+                                </label>
+                                <input type="range" id="detailErode" class="slider"
+                                       min="0" max="20" step="1" value="6">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">
+                                    细节膨胀 (Detail Dilate)
+                                    <span class="slider-value" id="detailDilateValue">6</span>
+                                </label>
+                                <input type="range" id="detailDilate" class="slider"
+                                       min="0" max="20" step="1" value="6">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">
+                                    黑点阈值 (Black Point)
+                                    <span class="slider-value" id="blackPointValue">0.15</span>
+                                </label>
+                                <input type="range" id="blackPoint" class="slider"
+                                       min="0" max="1" step="0.01" value="0.15">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">
+                                    白点阈值 (White Point)
+                                    <span class="slider-value" id="whitePointValue">0.99</span>
+                                </label>
+                                <input type="range" id="whitePoint" class="slider"
+                                       min="0" max="1" step="0.01" value="0.99">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">
+                                    最大分辨率 (MP)
+                                    <span class="slider-value" id="maxMegapixelsValue">2.0</span>
+                                </label>
+                                <input type="range" id="maxMegapixels" class="slider"
+                                       min="0.5" max="8" step="0.5" value="2">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">设备</label>
+                                <select id="device" class="form-select">
+                                    <option value="cuda" selected>CUDA (GPU)</option>
+                                    <option value="cpu">CPU</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="button-group">
+                <button class="btn btn-secondary" onclick="resetForm()">
+                    🔄 重置
+                </button>
+                <button class="btn btn-primary" id="submitBtn" onclick="startMatting()">
+                    ✨ 开始抠图
+                </button>
+            </div>
+
+            <!-- 加载动画 -->
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>正在处理中，请稍候...</p>
+            </div>
+
+            <!-- 结果展示 -->
+            <div class="result-section" id="resultSection">
+                <h2 style="margin-bottom: 20px; color: #333;">抠图结果</h2>
+                <div class="result-grid">
+                    <div class="result-item">
+                        <h3>原始图片</h3>
+                        <img id="originalImage" alt="原始图片">
+                    </div>
+                    <div class="result-item">
+                        <h3>抠图结果</h3>
+                        <img id="resultImage" alt="抠图结果">
+                    </div>
+                </div>
+                <div class="button-group" style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="downloadResult()">
+                        📥 下载结果
+                    </button>
+                    <button class="btn btn-secondary" onclick="newMatting()">
+                        🆕 新建抠图
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        let resultFilename = null;
+
+        // 文件上传处理
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const previewImage = document.getElementById('previewImage');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('请上传图片文件');
+                return;
+            }
+
+            selectedFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewImage.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 滑块值更新
+        document.querySelectorAll('.slider').forEach(slider => {
+            const valueDisplay = document.getElementById(slider.id + 'Value');
+            slider.addEventListener('input', (e) => {
+                valueDisplay.textContent = parseFloat(e.target.value).toFixed(2);
+            });
+        });
+
+        // 高级选项切换
+        function toggleAdvanced() {
+            const content = document.getElementById('advancedContent');
+            const icon = document.getElementById('toggleIcon');
+            content.classList.toggle('show');
+            icon.classList.toggle('open');
+        }
+
+        // 设置关键字
+        function setKeyword(keyword) {
+            document.getElementById('keywordInput').value = keyword;
+        }
+
+        // 开始抠图
+        async function startMatting() {
+            if (!selectedFile) {
+                alert('请先上传图片');
+                return;
+            }
+
+            const keyword = document.getElementById('keywordInput').value.trim();
+            if (!keyword) {
+                alert('请输入关键字');
+                return;
+            }
+
+            // 显示加载动画
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('submitBtn').disabled = true;
+
+            // 构建表单数据
+            const formData = new FormData();
+            formData.append('image', selectedFile);
+            formData.append('keyword', keyword);
+            formData.append('translateFrom', document.getElementById('translateFrom').value);
+            formData.append('samModel', document.getElementById('samModel').value);
+            formData.append('dinoModel', document.getElementById('dinoModel').value);
+            formData.append('threshold', document.getElementById('threshold').value);
+            formData.append('detailMethod', document.getElementById('detailMethod').value);
+            formData.append('detailErode', document.getElementById('detailErode').value);
+            formData.append('detailDilate', document.getElementById('detailDilate').value);
+            formData.append('blackPoint', document.getElementById('blackPoint').value);
+            formData.append('whitePoint', document.getElementById('whitePoint').value);
+            formData.append('maxMegapixels', document.getElementById('maxMegapixels').value);
+            formData.append('device', document.getElementById('device').value);
+
+            try {
+                // 调用后端 API
+                const response = await fetch('/api/matting/keyword', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // 显示结果
+                    document.getElementById('originalImage').src = previewImage.src;
+                    document.getElementById('resultImage').src = result.outputUrl;
+                    resultFilename = result.outputFilename;
+                    document.getElementById('resultSection').classList.add('show');
+                } else {
+                    alert('抠图失败: ' + result.errorMessage);
+                }
+            } catch (error) {
+                alert('请求失败: ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.remove('show');
+                document.getElementById('submitBtn').disabled = false;
+            }
+        }
+
+        // 重置表单
+        function resetForm() {
+            selectedFile = null;
+            fileInput.value = '';
+            previewImage.style.display = 'none';
+            document.getElementById('keywordInput').value = '红色袜子';
+            document.getElementById('threshold').value = 0.3;
+            document.getElementById('thresholdValue').textContent = '0.30';
+            document.getElementById('resultSection').classList.remove('show');
+        }
+
+        // 下载结果
+        function downloadResult() {
+            if (resultFilename) {
+                window.location.href = '/output/' + resultFilename;
+            }
+        }
+
+        // 新建抠图
+        function newMatting() {
+            document.getElementById('resultSection').classList.remove('show');
+            resetForm();
+        }
+    </script>
+</body>
+</html>

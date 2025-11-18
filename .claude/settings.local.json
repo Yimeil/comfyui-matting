@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(mvn clean:*)",
+      "Bash(mvn:*)",
+      "Bash(where:*)",
+      "WebFetch(domain:9elements.com)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

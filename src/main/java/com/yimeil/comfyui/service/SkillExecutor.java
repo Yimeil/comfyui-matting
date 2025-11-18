@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Map;
 
 /**
  * Claude Skill 执行器
@@ -134,6 +135,98 @@ public class SkillExecutor {
         }
 
         log.info("【Skill Validator】参数验证通过");
+    }
+
+    /**
+     * 执行关键字抠图 Skill
+     *
+     * @param imageFile 上传的图片文件
+     * @param params 关键字抠图参数
+     * @return 抠图结果
+     */
+    public MattingResult executeKeywordMattingSkill(MultipartFile imageFile, Map<String, Object> params) {
+        log.info("【Keyword Matting Skill】开始执行");
+        log.info("【Keyword Matting Skill】输入文件: {}", imageFile.getOriginalFilename());
+        log.info("【Keyword Matting Skill】关键字: {}", params.get("keyword"));
+
+        MattingResult result = new MattingResult();
+        long startTime = System.currentTimeMillis();
+
+        try {
+            // Step 1: 验证 Skill 定义文件存在
+            validateSkillExists("keyword-matting");
+
+            // Step 2: 验证关键字参数
+            validateKeywordMattingParameters(params);
+
+            // Step 3: 构建 MattingRequest（用于工作流名称）
+            MattingRequest request = new MattingRequest();
+            request.setWorkflowName("matting_keyword_api.json");
+
+            // Step 4: 调用 ComfyUIService 执行关键字抠图
+            log.info("【Keyword Matting Skill】调用 ComfyUIService 执行关键字抠图");
+            result = comfyUIService.runKeywordMatting(imageFile, request, params);
+
+            // Step 5: 计算执行时间
+            long executionTime = System.currentTimeMillis() - startTime;
+            result.setExecutionTime(executionTime);
+
+            if (result.isSuccess()) {
+                log.info("【Keyword Matting Skill】执行成功，耗时: {}ms", executionTime);
+                log.info("【Keyword Matting Skill】输出文件: {}", result.getOutputFilename());
+            } else {
+                log.error("【Keyword Matting Skill】执行失败: {}", result.getErrorMessage());
+            }
+
+            return result;
+
+        } catch (Exception e) {
+            log.error("【Keyword Matting Skill】执行异常", e);
+            result.setSuccess(false);
+            result.setErrorMessage("Keyword Matting Skill 执行失败: " + e.getMessage());
+            result.setExecutionTime(System.currentTimeMillis() - startTime);
+            return result;
+        }
+    }
+
+    /**
+     * 验证关键字抠图参数
+     *
+     * @param params 参数 Map
+     * @throws Exception 如果参数无效
+     */
+    private void validateKeywordMattingParameters(Map<String, Object> params) throws Exception {
+        // 验证关键字是否存在
+        String keyword = (String) params.get("keyword");
+        if (keyword == null || keyword.trim().isEmpty()) {
+            throw new Exception("关键字不能为空");
+        }
+
+        // 验证 threshold
+        if (params.containsKey("threshold")) {
+            double threshold = ((Number) params.get("threshold")).doubleValue();
+            if (threshold < 0.1 || threshold > 1.0) {
+                throw new Exception("threshold 必须在 0.1 到 1.0 之间，当前值: " + threshold);
+            }
+        }
+
+        // 验证 detailErode
+        if (params.containsKey("detailErode")) {
+            int value = ((Number) params.get("detailErode")).intValue();
+            if (value < 0 || value > 20) {
+                throw new Exception("detailErode 必须在 0 到 20 之间，当前值: " + value);
+            }
+        }
+
+        // 验证 detailDilate
+        if (params.containsKey("detailDilate")) {
+            int value = ((Number) params.get("detailDilate")).intValue();
+            if (value < 0 || value > 20) {
+                throw new Exception("detailDilate 必须在 0 到 20 之间，当前值: " + value);
+            }
+        }
+
+        log.info("【Skill Validator】关键字抠图参数验证通过");
     }
 
     /**

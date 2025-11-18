@@ -277,7 +277,6 @@
         <div class="header">
             <h1>🎨 ComfyUI 智能抠图服务</h1>
             <p class="subtitle">基于 Claude Skills 的智能图像处理</p>
-            <p class="tech-stack">Vue 3 + Spring Boot + Claude Skills + ComfyUI API</p>
             <span class="status-badge" :class="serverStatus ? 'online' : 'offline'">
                 {{ serverStatus ? '🟢 服务在线' : '🔴 服务离线' }}
             </span>
@@ -294,6 +293,11 @@
                         @click="selectSkill('matting')">
                         🎯 智能抠图
                     </button>
+                    <a href="matting-keyword.html" style="text-decoration: none; color: inherit;">
+                        <button class="skill-btn">
+                            🔍 关键字抠图
+                        </button>
+                    </a>
                     <!-- 未来可以添加更多 skills -->
                     <button class="skill-btn" disabled style="opacity: 0.5;">
                         ✨ 图像增强 (即将推出)

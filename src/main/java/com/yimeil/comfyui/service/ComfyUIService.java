@@ -16,6 +16,7 @@ import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -68,7 +69,7 @@ public class ComfyUIService {
     /**
      * 上传图片到 ComfyUI 服务器
      */
-    public String uploadImage(MultipartFile file) throws IOException {
+    public String uploadImage(MultipartFile file) throws IOException, ParseException {
         log.info("上传图片: {}", file.getOriginalFilename());
 
         String url = config.getApi().getBaseUrl() + "/upload/image";
@@ -87,7 +88,7 @@ public class ComfyUIService {
             httpPost.setEntity(entity);
 
             try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
-                String responseBody = EntityUtils.toString(response.getEntity());
+                String responseBody = EntityUtils.toString(response.getEntity(), "UTF-8");
                 JsonNode jsonNode = objectMapper.readTree(responseBody);
                 String uploadedName = jsonNode.get("name").asText();
 
@@ -95,6 +96,77 @@ public class ComfyUIService {
                 return uploadedName;
             }
         }
+    }
+
+    /**
+     * 将 ComfyUI UI 格式转换为 API 格式
+     * UI 格式包含: nodes, links, groups 等
+     * API 格式只需要: {nodeId: {inputs: {...}, class_type: "..."}}
+     */
+    private JsonNode convertUIFormatToAPIFormat(JsonNode uiWorkflow) {
+        if (!uiWorkflow.has("nodes")) {
+            // 已经是 API 格式
+            return uiWorkflow;
+        }
+
+        ObjectNode apiWorkflow = objectMapper.createObjectNode();
+        JsonNode nodes = uiWorkflow.get("nodes");
+
+        for (JsonNode node : nodes) {
+            String nodeId = node.get("id").asText();
+            String nodeType = node.get("type").asText();
+
+            ObjectNode apiNode = objectMapper.createObjectNode();
+            apiNode.put("class_type", nodeType);
+
+            // 构建 inputs
+            ObjectNode inputs = objectMapper.createObjectNode();
+
+            // 从 widgets_values 获取参数值
+            if (node.has("widgets_values") && node.get("widgets_values").isArray()) {
+                JsonNode widgetsValues = node.get("widgets_values");
+                JsonNode nodeInputs = node.get("inputs");
+
+                int widgetIndex = 0;
+                for (int i = 0; i < nodeInputs.size(); i++) {
+                    JsonNode input = nodeInputs.get(i);
+                    if (input.has("widget")) {
+                        String inputName = input.get("name").asText();
+                        if (widgetIndex < widgetsValues.size()) {
+                            JsonNode value = widgetsValues.get(widgetIndex);
+                            if (value.isTextual()) {
+                                inputs.put(inputName, value.asText());
+                            } else if (value.isNumber()) {
+                                inputs.set(inputName, value);
+                            } else if (value.isBoolean()) {
+                                inputs.put(inputName, value.asBoolean());
+                            }
+                            widgetIndex++;
+                        }
+                    }
+                }
+            }
+
+            // 从 inputs 获取连接关系
+            if (node.has("inputs")) {
+                for (JsonNode input : node.get("inputs")) {
+                    if (input.has("link") && !input.get("link").isNull()) {
+                        // 这里需要查找对应的 link 信息
+                        // 简化处理：如果没有 widget，说明是连接输入
+                        if (!input.has("widget")) {
+                            String inputName = input.get("name").asText();
+                            // 连接信息需要从 links 数组中查找
+                            // 暂时跳过，因为这个比较复杂
+                        }
+                    }
+                }
+            }
+
+            apiNode.set("inputs", inputs);
+            apiWorkflow.set(nodeId, apiNode);
+        }
+
+        return apiWorkflow;
     }
 
     /**
@@ -127,7 +199,7 @@ public class ComfyUIService {
     /**
      * 执行工作流
      */
-    public String executeWorkflow(JsonNode workflow) throws IOException {
+    public String executeWorkflow(JsonNode workflow) throws IOException, ParseException {
         log.info("提交工作流执行...");
 
         String url = config.getApi().getBaseUrl() + "/prompt";
@@ -143,8 +215,45 @@ public class ComfyUIService {
             httpPost.setEntity(new StringEntity(objectMapper.writeValueAsString(payload)));
 
             try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
-                String responseBody = EntityUtils.toString(response.getEntity());
+                String responseBody = EntityUtils.toString(response.getEntity(), "UTF-8");
+                log.info("ComfyUI API 响应: {}", responseBody);
+
                 JsonNode jsonNode = objectMapper.readTree(responseBody);
+
+                // 检查是否有错误响应
+                if (jsonNode.has("error")) {
+                    JsonNode errorNode = jsonNode.get("error");
+                    String errorType = errorNode.get("type").asText();
+                    String errorMessage = errorNode.get("message").asText();
+
+                    // 提取详细的节点错误信息
+                    StringBuilder detailsBuilder = new StringBuilder();
+                    if (jsonNode.has("node_errors")) {
+                        JsonNode nodeErrors = jsonNode.get("node_errors");
+                        nodeErrors.fields().forEachRemaining(entry -> {
+                            String nodeId = entry.getKey();
+                            JsonNode nodeError = entry.getValue();
+                            if (nodeError.has("errors") && nodeError.get("errors").isArray()) {
+                                nodeError.get("errors").forEach(err -> {
+                                    String details = err.has("details") ? err.get("details").asText() : "";
+                                    detailsBuilder.append(String.format("\n节点 %s: %s", nodeId, details));
+                                });
+                            }
+                        });
+                    }
+
+                    String fullError = String.format("ComfyUI 错误 [%s]: %s%s",
+                            errorType, errorMessage, detailsBuilder.toString());
+                    log.error(fullError);
+                    throw new IOException(fullError);
+                }
+
+                // 检查响应中是否包含 prompt_id
+                if (!jsonNode.has("prompt_id")) {
+                    log.error("API 响应中没有 prompt_id 字段，完整响应: {}", responseBody);
+                    throw new IOException("API 响应格式错误: 缺少 prompt_id 字段");
+                }
+
                 String promptId = jsonNode.get("prompt_id").asText();
 
                 log.info("工作流已提交，Prompt ID: {}", promptId);
@@ -156,7 +265,7 @@ public class ComfyUIService {
     /**
      * 等待执行完成并获取结果
      */
-    public JsonNode waitForCompletion(String promptId) throws IOException, InterruptedException {
+    public JsonNode waitForCompletion(String promptId) throws IOException, InterruptedException, ParseException {
         log.info("等待工作流执行完成...");
 
         String url = config.getApi().getBaseUrl() + "/history/" + promptId;
@@ -172,7 +281,7 @@ public class ComfyUIService {
                 HttpGet httpGet = new HttpGet(url);
 
                 try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
-                    String responseBody = EntityUtils.toString(response.getEntity());
+                    String responseBody = EntityUtils.toString(response.getEntity(), "UTF-8");
                     JsonNode history = objectMapper.readTree(responseBody);
 
                     if (history.has(promptId)) {
@@ -237,32 +346,122 @@ public class ComfyUIService {
             // 2. 上传图片
             String uploadedName = uploadImage(imageFile);
 
-            // 3. 更新工作流参数
-            workflow = updateWorkflowParams(workflow, "10", "image", uploadedName);
+            // 3. 更新工作流参数 - 节点 2 是 LoadImage 节点
+            workflow = updateWorkflowParams(workflow, "2", "image", uploadedName);
 
             // 应用自定义参数
+            // 节点 10 (SAMDetectorSegmented) 的 threshold 参数
             if (request.getThreshold() != null) {
-                workflow = updateWorkflowParams(workflow, "15", "threshold", request.getThreshold());
+                workflow = updateWorkflowParams(workflow, "10", "threshold", request.getThreshold());
             }
 
+            // 节点 23 (GrowMaskWithBlur) 的边缘优化参数
             if (request.getAlphaMatting() != null && request.getAlphaMatting()) {
-                workflow = updateWorkflowParams(workflow, "23", "alpha_matting", "true");
-                if (request.getAlphaMattingForegroundThreshold() != null) {
-                    workflow = updateWorkflowParams(workflow, "23",
-                            "alpha_matting_foreground_threshold",
-                            request.getAlphaMattingForegroundThreshold());
-                }
-                if (request.getAlphaMattingBackgroundThreshold() != null) {
-                    workflow = updateWorkflowParams(workflow, "23",
-                            "alpha_matting_background_threshold",
-                            request.getAlphaMattingBackgroundThreshold());
-                }
+                // 调整边缘模糊参数
                 if (request.getAlphaMattingErodeSize() != null) {
-                    workflow = updateWorkflowParams(workflow, "23",
-                            "alpha_matting_erode_size",
-                            request.getAlphaMattingErodeSize());
+                    workflow = updateWorkflowParams(workflow, "23", "expand", -request.getAlphaMattingErodeSize());
                 }
             }
+
+            // 4. 执行工作流
+            log.debug("runMatting - 更新后的工作流: {}", objectMapper.writeValueAsString(workflow));
+            String promptId = executeWorkflow(workflow);
+            result.setPromptId(promptId);
+
+            // 5. 等待完成
+            JsonNode outputs = waitForCompletion(promptId);
+
+            // 6. 下载结果
+            String outputFilename = null;
+            for (JsonNode nodeOutput : outputs) {
+                if (nodeOutput.has("images")) {
+                    JsonNode images = nodeOutput.get("images");
+                    if (images.isArray() && images.size() > 0) {
+                        JsonNode firstImage = images.get(0);
+                        String filename = firstImage.get("filename").asText();
+                        String subfolder = firstImage.has("subfolder") ?
+                                firstImage.get("subfolder").asText() : "";
+
+                        downloadImage(filename, subfolder, "output");
+                        outputFilename = filename;
+                        break;
+                    }
+                }
+            }
+
+            if (outputFilename != null) {
+                result.setSuccess(true);
+                result.setOutputFilename(outputFilename);
+                result.setOutputUrl("/output/" + outputFilename);
+            } else {
+                result.setSuccess(false);
+                result.setErrorMessage("未找到输出图片");
+            }
+
+        } catch (Exception e) {
+            log.error("抠图失败", e);
+            result.setSuccess(false);
+            result.setErrorMessage(e.getMessage());
+        }
+
+        result.setExecutionTime(System.currentTimeMillis() - startTime);
+        return result;
+    }
+
+    /**
+     * 执行关键字抠图
+     *
+     * @param imageFile 图片文件
+     * @param request 基本请求参数（主要用于工作流名称）
+     * @param params 关键字抠图参数
+     * @return 抠图结果
+     */
+    public MattingResult runKeywordMatting(MultipartFile imageFile, MattingRequest request, Map<String, Object> params) {
+        MattingResult result = new MattingResult();
+        long startTime = System.currentTimeMillis();
+
+        try {
+            // 1. 加载关键字抠图工作流
+            String workflowName = request.getWorkflowName() != null ?
+                    request.getWorkflowName() : "matting_keyword_api.json";
+            JsonNode workflow = loadWorkflowFromResource(workflowName);
+
+            // 2. 上传图片
+            String uploadedName = uploadImage(imageFile);
+
+            // 3. 更新工作流参数 - 根据 matting_keyword_api.json 的节点结构
+            // 节点 1: LoadImage - 加载图片
+            workflow = updateWorkflowParams(workflow, "1", "image", uploadedName);
+
+            // 节点 4: ArgosTranslateTextNode - 翻译关键字
+            String keyword = (String) params.get("keyword");
+            String translateFrom = (String) params.getOrDefault("translateFrom", "chinese");
+            workflow = updateWorkflowParams(workflow, "4", "from_translate", translateFrom);
+            workflow = updateWorkflowParams(workflow, "4", "to_translate", "english");
+            workflow = updateWorkflowParams(workflow, "4", "text", keyword);
+
+            // 节点 2: LayerMask: SegmentAnythingUltra V2 - SAM + Grounding DINO
+            String samModel = (String) params.getOrDefault("samModel", "sam_vit_h (2.56GB)");
+            String dinoModel = (String) params.getOrDefault("dinoModel", "GroundingDINO_SwinT_OGC (694MB)");
+            Double threshold = (Double) params.getOrDefault("threshold", 0.3);
+            String detailMethod = (String) params.getOrDefault("detailMethod", "VITMatte(local)");
+            Integer detailErode = (Integer) params.getOrDefault("detailErode", 6);
+            Integer detailDilate = (Integer) params.getOrDefault("detailDilate", 6);
+            Double blackPoint = (Double) params.getOrDefault("blackPoint", 0.15);
+            Double whitePoint = (Double) params.getOrDefault("whitePoint", 0.99);
+            Double maxMegapixels = (Double) params.getOrDefault("maxMegapixels", 2.0);
+            String device = (String) params.getOrDefault("device", "cuda");
+
+            workflow = updateWorkflowParams(workflow, "2", "sam_model", samModel);
+            workflow = updateWorkflowParams(workflow, "2", "grounding_dino_model", dinoModel);
+            workflow = updateWorkflowParams(workflow, "2", "threshold", threshold);
+            workflow = updateWorkflowParams(workflow, "2", "detail_method", detailMethod);
+            workflow = updateWorkflowParams(workflow, "2", "detail_erode", detailErode);
+            workflow = updateWorkflowParams(workflow, "2", "detail_dilate", detailDilate);
+            workflow = updateWorkflowParams(workflow, "2", "black_point", blackPoint);
+            workflow = updateWorkflowParams(workflow, "2", "white_point", whitePoint);
+            workflow = updateWorkflowParams(workflow, "2", "max_megapixels", maxMegapixels);
+            workflow = updateWorkflowParams(workflow, "2", "device", device);
 
             // 4. 执行工作流
             String promptId = executeWorkflow(workflow);
@@ -299,7 +498,7 @@ public class ComfyUIService {
             }
 
         } catch (Exception e) {
-            log.error("抠图失败", e);
+            log.error("关键字抠图失败", e);
             result.setSuccess(false);
             result.setErrorMessage(e.getMessage());
         }
