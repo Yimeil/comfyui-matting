@@ -627,6 +627,7 @@
                     isDrawing: false,
                     maskCanvas: null,
                     maskCtx: null,
+                    maskData: null, // 纯蒙版数据 (黑白)
                     originalImage: null
                 };
             },
@@ -702,16 +703,54 @@
                     const ctx = canvas.getContext('2d');
                     this.maskCtx = ctx;
 
-                    // 绘制原图作为背景
-                    ctx.drawImage(img, 0, 0, width, height);
+                    // 创建纯黑色蒙版数据（初始全黑 = 不处理任何区域）
+                    this.maskData = ctx.createImageData(width, height);
+                    for (let i = 0; i < this.maskData.data.length; i += 4) {
+                        this.maskData.data[i] = 0;     // R
+                        this.maskData.data[i + 1] = 0; // G
+                        this.maskData.data[i + 2] = 0; // B
+                        this.maskData.data[i + 3] = 255; // A
+                    }
 
-                    // 创建半透明蒙版层
-                    ctx.globalAlpha = 0.5;
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                    ctx.fillRect(0, 0, width, height);
-                    ctx.globalAlpha = 1.0;
-
+                    // 绘制显示效果：原图 + 半透明黑色遮罩
+                    this.redrawCanvas();
                     this.updateMaskPreview();
+                },
+                // 重绘 Canvas 显示效果
+                redrawCanvas() {
+                    const canvas = this.$refs.maskCanvas;
+                    const ctx = this.maskCtx;
+                    if (!canvas || !ctx || !this.originalImage) return;
+
+                    // 先绘制原图
+                    ctx.drawImage(this.originalImage, 0, 0, canvas.width, canvas.height);
+
+                    // 根据蒙版数据绘制半透明遮罩
+                    const imageData = ctx.createImageData(canvas.width, canvas.height);
+                    for (let i = 0; i < this.maskData.data.length; i += 4) {
+                        const maskValue = this.maskData.data[i]; // 蒙版值 (0=黑色/不处理, 255=白色/处理)
+                        if (maskValue < 128) {
+                            // 黑色蒙版区域 -> 显示半透明黑色遮罩
+                            imageData.data[i] = 0;
+                            imageData.data[i + 1] = 0;
+                            imageData.data[i + 2] = 0;
+                            imageData.data[i + 3] = 128; // 半透明
+                        } else {
+                            // 白色蒙版区域 -> 透明（显示原图）
+                            imageData.data[i] = 0;
+                            imageData.data[i + 1] = 0;
+                            imageData.data[i + 2] = 0;
+                            imageData.data[i + 3] = 0;
+                        }
+                    }
+
+                    // 将遮罩层叠加到原图上
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = canvas.width;
+                    tempCanvas.height = canvas.height;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCtx.putImageData(imageData, 0, 0);
+                    ctx.drawImage(tempCanvas, 0, 0);
                 },
                 // 选择绘制工具
                 selectMaskTool(tool) {
@@ -724,7 +763,7 @@
                 },
                 // 绘制
                 draw(event) {
-                    if (!this.isDrawing) return;
+                    if (!this.isDrawing || !this.maskData) return;
 
                     event.preventDefault();
                     const canvas = this.$refs.maskCanvas;
@@ -739,24 +778,30 @@
                         clientY = event.clientY;
                     }
 
-                    const x = clientX - rect.left;
-                    const y = clientY - rect.top;
+                    const x = (clientX - rect.left) * (canvas.width / rect.width);
+                    const y = (clientY - rect.top) * (canvas.height / rect.height);
 
-                    const ctx = this.maskCtx;
-                    ctx.beginPath();
-                    ctx.arc(x, y, this.brushSize / 2, 0, Math.PI * 2);
+                    // 直接修改蒙版数据
+                    const radius = this.brushSize / 2;
+                    const maskValue = this.maskTool === 'brush' ? 255 : 0; // 画笔=白色(255), 橡皮擦=黑色(0)
 
-                    if (this.maskTool === 'brush') {
-                        // 画笔：绘制白色（清除遮罩，显示原图）
-                        ctx.globalCompositeOperation = 'destination-out';
-                        ctx.fill();
-                        ctx.globalCompositeOperation = 'source-over';
-                    } else {
-                        // 橡皮擦：恢复遮罩
-                        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                        ctx.fill();
+                    for (let dy = -radius; dy <= radius; dy++) {
+                        for (let dx = -radius; dx <= radius; dx++) {
+                            if (dx * dx + dy * dy <= radius * radius) {
+                                const px = Math.floor(x + dx);
+                                const py = Math.floor(y + dy);
+                                if (px >= 0 && px < canvas.width && py >= 0 && py < canvas.height) {
+                                    const idx = (py * canvas.width + px) * 4;
+                                    this.maskData.data[idx] = maskValue;     // R
+                                    this.maskData.data[idx + 1] = maskValue; // G
+                                    this.maskData.data[idx + 2] = maskValue; // B
+                                    // Alpha 保持 255
+                                }
+                            }
+                        }
                     }
 
+                    this.redrawCanvas();
                     this.updateMaskPreview();
                 },
                 // 停止绘制
@@ -772,53 +817,33 @@
                 updateMaskPreview() {
                     const canvas = this.$refs.maskCanvas;
                     const previewCanvas = this.$refs.maskPreviewCanvas;
-                    if (!canvas || !previewCanvas) return;
+                    if (!canvas || !previewCanvas || !this.maskData) return;
 
                     const ctx = previewCanvas.getContext('2d');
                     const width = previewCanvas.width;
                     const height = previewCanvas.height;
 
-                    // 清空预览
-                    ctx.fillStyle = 'black';
-                    ctx.fillRect(0, 0, width, height);
-
-                    // 获取主 Canvas 的图像数据
-                    const imageData = this.maskCtx.getImageData(0, 0, canvas.width, canvas.height);
-                    const data = imageData.data;
-
-                    // 创建纯黑白蒙版
-                    const maskData = ctx.createImageData(canvas.width, canvas.height);
-                    for (let i = 0; i < data.length; i += 4) {
-                        // 检查 alpha 通道，alpha < 255 表示被绘制过（蒙版区域）
-                        const alpha = data[i + 3];
-                        if (alpha < 255) {
-                            // 白色 = 选中区域
-                            maskData.data[i] = 255;
-                            maskData.data[i + 1] = 255;
-                            maskData.data[i + 2] = 255;
-                            maskData.data[i + 3] = 255;
-                        } else {
-                            // 黑色 = 未选中区域
-                            maskData.data[i] = 0;
-                            maskData.data[i + 1] = 0;
-                            maskData.data[i + 2] = 0;
-                            maskData.data[i + 3] = 255;
-                        }
-                    }
-
-                    // 缩放绘制到预览
+                    // 将蒙版数据绘制到临时 canvas
                     const tempCanvas = document.createElement('canvas');
                     tempCanvas.width = canvas.width;
                     tempCanvas.height = canvas.height;
                     const tempCtx = tempCanvas.getContext('2d');
-                    tempCtx.putImageData(maskData, 0, 0);
+                    tempCtx.putImageData(this.maskData, 0, 0);
 
+                    // 缩放绘制到预览
+                    ctx.fillStyle = 'black';
+                    ctx.fillRect(0, 0, width, height);
                     ctx.drawImage(tempCanvas, 0, 0, width, height);
                 },
                 // 生成带蒙版的图像（alpha 通道）
                 async generateMaskedImage() {
                     return new Promise((resolve) => {
                         const canvas = this.$refs.maskCanvas;
+                        if (!canvas || !this.maskData) {
+                            resolve(null);
+                            return;
+                        }
+
                         const resultCanvas = document.createElement('canvas');
                         resultCanvas.width = this.originalImage.width;
                         resultCanvas.height = this.originalImage.height;
@@ -827,36 +852,13 @@
                         // 绘制原图
                         ctx.drawImage(this.originalImage, 0, 0);
 
-                        // 获取蒙版数据
+                        // 将蒙版数据缩放到原始尺寸
                         const maskCanvas = document.createElement('canvas');
                         maskCanvas.width = canvas.width;
                         maskCanvas.height = canvas.height;
                         const maskCtx = maskCanvas.getContext('2d');
+                        maskCtx.putImageData(this.maskData, 0, 0);
 
-                        const imageData = this.maskCtx.getImageData(0, 0, canvas.width, canvas.height);
-                        const data = imageData.data;
-
-                        // 创建蒙版
-                        const maskData = maskCtx.createImageData(canvas.width, canvas.height);
-                        for (let i = 0; i < data.length; i += 4) {
-                            const alpha = data[i + 3];
-                            if (alpha < 255) {
-                                // 被绘制的区域 = 白色蒙版
-                                maskData.data[i] = 255;
-                                maskData.data[i + 1] = 255;
-                                maskData.data[i + 2] = 255;
-                                maskData.data[i + 3] = 255;
-                            } else {
-                                // 未绘制的区域 = 透明
-                                maskData.data[i] = 0;
-                                maskData.data[i + 1] = 0;
-                                maskData.data[i + 2] = 0;
-                                maskData.data[i + 3] = 0;
-                            }
-                        }
-                        maskCtx.putImageData(maskData, 0, 0);
-
-                        // 将蒙版缩放到原始尺寸
                         const scaledMask = document.createElement('canvas');
                         scaledMask.width = this.originalImage.width;
                         scaledMask.height = this.originalImage.height;
@@ -868,14 +870,16 @@
                         const scaledMaskData = scaledCtx.getImageData(0, 0, scaledMask.width, scaledMask.height);
 
                         for (let i = 0; i < resultData.data.length; i += 4) {
-                            // 使用蒙版的亮度作为 alpha 值
-                            const maskValue = scaledMaskData.data[i]; // R 通道（灰度值）
-                            resultData.data[i + 3] = maskValue; // 设置 alpha 通道
+                            // 使用蒙版的 R 通道值作为 alpha 值
+                            // 白色(255) -> alpha = 255 (不透明)
+                            // 黑色(0) -> alpha = 0 (透明)
+                            const maskValue = scaledMaskData.data[i];
+                            resultData.data[i + 3] = maskValue;
                         }
 
                         ctx.putImageData(resultData, 0, 0);
 
-                        // 转换为 Blob
+                        // 转换为 PNG Blob
                         resultCanvas.toBlob((blob) => {
                             resolve(blob);
                         }, 'image/png');
@@ -895,9 +899,13 @@
                     try {
                         // 生成带蒙版的图像（将蒙版作为 alpha 通道）
                         const maskedImageBlob = await this.generateMaskedImage();
+
+                        // 强制使用 .png 扩展名（因为需要 alpha 通道）
+                        const originalName = this.selectedFile.name;
+                        const nameWithoutExt = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
                         const maskedImageFile = new File(
                             [maskedImageBlob],
-                            'masked_' + this.selectedFile.name,
+                            'masked_' + nameWithoutExt + '.png',
                             { type: 'image/png' }
                         );
 
