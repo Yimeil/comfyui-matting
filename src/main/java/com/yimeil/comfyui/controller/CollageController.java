@@ -1,6 +1,7 @@
 package com.yimeil.comfyui.controller;
 
 import com.yimeil.comfyui.model.ApiResponse;
+import com.yimeil.comfyui.model.CollageRequest;
 import com.yimeil.comfyui.model.CollageResult;
 import com.yimeil.comfyui.service.ComfyUIService;
 import lombok.extern.slf4j.Slf4j;
@@ -35,47 +36,14 @@ public class CollageController {
      * 执行Excel产品拼接
      */
     @PostMapping("/execute")
-    public ApiResponse<CollageResult> executeCollage(
-            @RequestParam(value = "excelFile", required = false) MultipartFile excelFile,
-            @RequestParam(value = "excelUrl", required = false) String excelUrl,
-            // Excel配置
-            @RequestParam(value = "sheetName", defaultValue = "Sheet1") String sheetName,
-            @RequestParam(value = "combinedSkuCol", defaultValue = "A") String combinedSkuCol,
-            @RequestParam(value = "skuCol", defaultValue = "B") String skuCol,
-            @RequestParam(value = "pcsCol", defaultValue = "C") String pcsCol,
-            @RequestParam(value = "urlCol", defaultValue = "D") String urlCol,
-            @RequestParam(value = "startRow", defaultValue = "2") Integer startRow,
-            @RequestParam(value = "filterCombinedSku", defaultValue = "") String filterCombinedSku,
-            // 拼接参数
-            @RequestParam(value = "imagesPerCollage", defaultValue = "9") Integer imagesPerCollage,
-            @RequestParam(value = "layout", defaultValue = "auto") String layout,
-            @RequestParam(value = "outputWidth", defaultValue = "1600") Integer outputWidth,
-            @RequestParam(value = "outputHeight", defaultValue = "1600") Integer outputHeight,
-            @RequestParam(value = "spacing", defaultValue = "0") Integer spacing,
-            @RequestParam(value = "minSpacing", defaultValue = "10") Integer minSpacing,
-            @RequestParam(value = "outerPadding", defaultValue = "50") Integer outerPadding,
-            @RequestParam(value = "productScale", defaultValue = "80") Integer productScale,
-            @RequestParam(value = "cropMargin", defaultValue = "1") Integer cropMargin,
-            @RequestParam(value = "skipEmpty", defaultValue = "false") Boolean skipEmpty,
-            // 标签设置
-            @RequestParam(value = "labelFormat", defaultValue = "×{pcs}") String labelFormat,
-            @RequestParam(value = "labelFontSize", defaultValue = "80") Integer labelFontSize,
-            @RequestParam(value = "labelPosition", defaultValue = "bottom") String labelPosition,
-            @RequestParam(value = "labelMargin", defaultValue = "30") Integer labelMargin,
-            @RequestParam(value = "hidePcsOne", defaultValue = "true") Boolean hidePcsOne,
-            // 其他设置
-            @RequestParam(value = "useCache", defaultValue = "true") Boolean useCache,
-            @RequestParam(value = "cacheSize", defaultValue = "100") Integer cacheSize,
-            @RequestParam(value = "outputMode", defaultValue = "by_combined_sku") String outputMode,
-            @RequestParam(value = "filenamePrefix", defaultValue = "collage/%date:yyyy-MM-dd%/") String filenamePrefix,
-            @RequestParam(value = "adaptiveDirection", defaultValue = "auto") String adaptiveDirection
-    ) {
+    public ApiResponse<CollageResult> executeCollage(@ModelAttribute CollageRequest collageRequest) {
         try {
             // 处理 Excel 文件输入
-            MultipartFile finalExcelFile = excelFile;
+            MultipartFile finalExcelFile = collageRequest.getExcelFile();
 
-            if (excelFile == null || excelFile.isEmpty()) {
+            if (finalExcelFile == null || finalExcelFile.isEmpty()) {
                 // 如果没有上传文件，尝试从 URL 下载
+                String excelUrl = collageRequest.getExcelUrl();
                 if (excelUrl != null && !excelUrl.trim().isEmpty()) {
                     log.info("从URL下载Excel文件: {}", excelUrl);
                     finalExcelFile = downloadExcelFromUrl(excelUrl.trim());
@@ -90,39 +58,39 @@ public class CollageController {
             Map<String, Object> params = new HashMap<>();
 
             // Excel配置
-            params.put("sheetName", sheetName);
-            params.put("combinedSkuCol", combinedSkuCol);
-            params.put("skuCol", skuCol);
-            params.put("pcsCol", pcsCol);
-            params.put("urlCol", urlCol);
-            params.put("startRow", startRow);
-            params.put("filterCombinedSku", filterCombinedSku);
+            params.put("sheetName", collageRequest.getSheetName());
+            params.put("combinedSkuCol", collageRequest.getCombinedSkuCol());
+            params.put("skuCol", collageRequest.getSkuCol());
+            params.put("pcsCol", collageRequest.getPcsCol());
+            params.put("urlCol", collageRequest.getUrlCol());
+            params.put("startRow", collageRequest.getStartRow());
+            params.put("filterCombinedSku", collageRequest.getFilterCombinedSku());
 
             // 拼接参数
-            params.put("imagesPerCollage", imagesPerCollage);
-            params.put("layout", layout);
-            params.put("outputWidth", outputWidth);
-            params.put("outputHeight", outputHeight);
-            params.put("spacing", spacing);
-            params.put("minSpacing", minSpacing);
-            params.put("outerPadding", outerPadding);
-            params.put("productScale", productScale);
-            params.put("cropMargin", cropMargin);
-            params.put("skipEmpty", skipEmpty);
+            params.put("imagesPerCollage", collageRequest.getImagesPerCollage());
+            params.put("layout", collageRequest.getLayout());
+            params.put("outputWidth", collageRequest.getOutputWidth());
+            params.put("outputHeight", collageRequest.getOutputHeight());
+            params.put("spacing", collageRequest.getSpacing());
+            params.put("minSpacing", collageRequest.getMinSpacing());
+            params.put("outerPadding", collageRequest.getOuterPadding());
+            params.put("productScale", collageRequest.getProductScale());
+            params.put("cropMargin", collageRequest.getCropMargin());
+            params.put("skipEmpty", collageRequest.getSkipEmpty());
 
             // 标签设置
-            params.put("labelFormat", labelFormat);
-            params.put("labelFontSize", labelFontSize);
-            params.put("labelPosition", labelPosition);
-            params.put("labelMargin", labelMargin);
-            params.put("hidePcsOne", hidePcsOne);
+            params.put("labelFormat", collageRequest.getLabelFormat());
+            params.put("labelFontSize", collageRequest.getLabelFontSize());
+            params.put("labelPosition", collageRequest.getLabelPosition());
+            params.put("labelMargin", collageRequest.getLabelMargin());
+            params.put("hidePcsOne", collageRequest.getHidePcsOne());
 
             // 其他设置
-            params.put("useCache", useCache);
-            params.put("cacheSize", cacheSize);
-            params.put("outputMode", outputMode);
-            params.put("filenamePrefix", filenamePrefix);
-            params.put("adaptiveDirection", adaptiveDirection);
+            params.put("useCache", collageRequest.getUseCache());
+            params.put("cacheSize", collageRequest.getCacheSize());
+            params.put("outputMode", collageRequest.getOutputMode());
+            params.put("filenamePrefix", collageRequest.getFilenamePrefix());
+            params.put("adaptiveDirection", collageRequest.getAdaptiveDirection());
 
             // 执行拼接
             CollageResult result = comfyUIService.runCollage(finalExcelFile, params);
