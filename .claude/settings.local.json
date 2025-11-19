@@ -6,7 +6,8 @@
       "Bash(mvn clean:*)",
       "Bash(mvn:*)",
       "Bash(where:*)",
-      "WebFetch(domain:9elements.com)"
+      "WebFetch(domain:9elements.com)",
+      "Bash(timeout:*)"
     ],
     "deny": [],
     "ask": []
