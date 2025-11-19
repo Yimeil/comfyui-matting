@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>蒙版抠图 - Mask Matting</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        #app {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 5px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+
+        .header .tech-stack {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-top: 10px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 20px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .status-badge.online {
+            background: rgba(76, 175, 80, 0.3);
+            color: white;
+        }
+
+        .status-badge.offline {
+            background: rgba(244, 67, 54, 0.3);
+            color: white;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .skill-selector {
+            margin-bottom: 30px;
+        }
+
+        .skill-selector h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .skill-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .skill-btn {
+            padding: 15px 30px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1rem;
+        }
+
+        .skill-btn:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+
+        .skill-btn.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #fafafa;
+        }
+
+        /* 左右布局容器 */
+        .main-layout {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .left-panel {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .right-panel {
+            width: 300px;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 900px) {
+            .main-layout {
+                flex-direction: column;
+            }
+            .right-panel {
+                width: 100%;
+            }
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #e8e8ff;
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        /* 蒙版绘制区域样式 */
+        .mask-drawing-section {
+            margin-top: 20px;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            padding: 20px;
+            background: #f9f9ff;
+        }
+
+        .mask-drawing-section h4 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .mask-canvas-container {
+            position: relative;
+            display: inline-block;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .mask-canvas {
+            display: block;
+            cursor: none; /* 隐藏默认光标，我们会绘制自定义光标 */
+            max-width: 100%;
+        }
+
+        .brush-cursor {
+            position: absolute;
+            border: 2px solid #667eea;
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            display: none;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .mask-toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .mask-tool-btn {
+            padding: 10px 20px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.95rem;
+        }
+
+        .mask-tool-btn:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+
+        .mask-tool-btn.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .brush-size-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brush-size-control label {
+            font-weight: 500;
+            color: #555;
+        }
+
+        .brush-size-control input[type="range"] {
+            width: 150px;
+        }
+
+        .mask-preview {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+
+        .mask-preview h5 {
+            margin-bottom: 10px;
+            color: #555;
+            font-size: 0.9rem;
+        }
+
+        .mask-preview canvas {
+            max-width: 100%;
+            border-radius: 5px;
+            border: 1px solid #eee;
+        }
+
+        .params-section {
+            margin-bottom: 30px;
+        }
+
+        .params-section h3 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .param-group {
+            margin-bottom: 20px;
+        }
+
+        .param-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .param-group input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+        }
+
+        .param-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .param-value {
+            display: inline-block;
+            margin-left: 10px;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f0f0ff;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result-section {
+            margin-top: 30px;
+        }
+
+        .result-image {
+            max-width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .result-info {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+
+        .result-info p {
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            opacity: 0.8;
+        }
+
+        /* 弹窗样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+            flex-shrink: 0;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: #333;
+            font-size: 1.3rem;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #999;
+            padding: 5px;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        .modal-body {
+            flex: 1;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .modal-body .mask-canvas-container {
+            max-height: calc(90vh - 280px);
+            overflow: hidden;
+        }
+
+        .modal-body .mask-canvas {
+            max-height: calc(90vh - 280px);
+            width: auto;
+            height: auto;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #eee;
+            flex-shrink: 0;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(40, 167, 69, 0.4);
+        }
+
+        /* 蒙版绘制按钮 */
+        .mask-edit-btn {
+            margin-top: 15px;
+            padding: 12px 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .mask-edit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        /* 蒙版状态提示 */
+        .mask-status {
+            margin-top: 15px;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .mask-status.has-mask {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .mask-status.no-mask {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="header">
+            <div style="text-align: left; margin-bottom: 15px;">
+                <a href="index.html" style="color: white; text-decoration: none; font-size: 0.9rem; opacity: 0.9;">
+                    ← 返回首页
+                </a>
+            </div>
+            <h1>🎯 蒙版抠图工具</h1>
+            <span class="status-badge">
+
+            </span>
+        </div>
+
+        <div class="card">
+            <!-- 使用说明 -->
+            <div style="background: #e7f3ff; border-left: 4px solid #2196F3; padding: 15px; border-radius: 8px; margin-bottom: 25px; font-size: 14px; color: #0c5460;">
+                <strong>使用说明：</strong><br>
+                1. 上传需要抠图的图片<br>
+                2. 点击"编辑蒙版区域"用画笔标记要抠图的部分<br>
+                3. 调整参数（可选），点击"开始执行"即可
+            </div>
+
+            <!-- 主要内容区域：左右布局 -->
+            <div class="main-layout">
+                <!-- 左侧：图片上传和蒙版 -->
+                <div class="left-panel">
+                    <!-- 图片上传区域 -->
+                    <div
+                        class="upload-area"
+                        :class="{ dragover: isDragging }"
+                        @click="triggerFileInput"
+                        @dragover.prevent="isDragging = true"
+                        @dragleave.prevent="isDragging = false"
+                        @drop.prevent="handleFileDrop">
+                        <div v-if="!previewUrl" class="upload-icon">📤</div>
+                        <div v-if="!previewUrl">
+                            <p style="font-size: 1.2rem; color: #666; margin-bottom: 10px;">
+                                点击或拖拽上传图片
+                            </p>
+                            <p style="font-size: 0.9rem; color: #999;">
+                                支持 JPG, PNG 格式
+                            </p>
+                        </div>
+                        <img v-if="previewUrl" :src="previewUrl" class="preview-image" alt="预览">
+                        <input
+                            type="file"
+                            ref="fileInput"
+                            @change="handleFileSelect"
+                            accept="image/*"
+                            style="display: none;">
+                    </div>
+
+                    <!-- 蒙版编辑按钮、执行按钮和状态 -->
+                    <div v-if="selectedFile && previewUrl" style="text-align: center; margin-top: 15px;">
+                        <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 10px;">
+                            <button class="mask-edit-btn" @click="openMaskModal">
+                                🎨 编辑蒙版区域
+                            </button>
+                            <button
+                                class="btn btn-primary"
+                                @click="executeSkill"
+                                :disabled="!selectedFile || processing"
+                                style="margin: 0; padding: 12px 25px; font-size: 1rem;">
+                                {{ processing ? '处理中...' : '🚀 开始执行' }}
+                            </button>
+                        </div>
+                        <div class="mask-status" :class="hasMask ? 'has-mask' : 'no-mask'">
+                            {{ hasMask ? '✅ 已设置蒙版区域' : '⚠️ 未设置蒙版，将处理整张图片' }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧：参数调整 -->
+                <div class="right-panel" v-if="selectedSkill === 'matting'">
+                    <div class="params-section" style="margin-bottom: 0;">
+                        <h3>⚙️ 参数调整</h3>
+
+                        <div class="param-group">
+                            <label>
+                                SAM 阈值
+                                <span class="param-value">{{ params.threshold }}</span>
+                            </label>
+                            <input
+                                type="range"
+                                v-model.number="params.threshold"
+                                min="0"
+                                max="1"
+                                step="0.1">
+                        </div>
+
+                        <div class="param-group">
+                            <label>
+                                蒙版提示阈值
+                                <span class="param-value">{{ params.maskHintThreshold }}</span>
+                            </label>
+                            <input
+                                type="range"
+                                v-model.number="params.maskHintThreshold"
+                                min="0"
+                                max="1"
+                                step="0.1">
+                        </div>
+
+                        <div class="param-group">
+                            <label>
+                                膨胀
+                                <span class="param-value">{{ params.dilation }}</span>
+                            </label>
+                            <input
+                                type="range"
+                                v-model.number="params.dilation"
+                                min="0"
+                                max="20"
+                                step="1">
+                        </div>
+
+                        <div class="param-group">
+                            <label>
+                                边界扩展
+                                <span class="param-value">{{ params.bboxExpansion }}</span>
+                            </label>
+                            <input
+                                type="range"
+                                v-model.number="params.bboxExpansion"
+                                min="0"
+                                max="10"
+                                step="1">
+                        </div>
+
+                        <div class="param-group">
+                            <label>
+                                蒙版扩展
+                                <span class="param-value">{{ params.expand }}</span>
+                            </label>
+                            <input
+                                type="range"
+                                v-model.number="params.expand"
+                                min="-20"
+                                max="20"
+                                step="1">
+                        </div>
+
+                        <div class="param-group">
+                            <label>
+                                模糊半径
+                                <span class="param-value">{{ params.blurRadius }}</span>
+                            </label>
+                            <input
+                                type="range"
+                                v-model.number="params.blurRadius"
+                                min="0"
+                                max="10"
+                                step="0.5">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 蒙版绘制弹窗 -->
+            <div v-if="showMaskModal" class="modal-overlay" @click.self="closeMaskModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>🎨 蒙版绘制</h3>
+                        <button class="modal-close" @click="closeMaskModal">&times;</button>
+                    </div>
+
+                    <div class="modal-body">
+                        <p style="margin-bottom: 10px; color: #666; font-size: 0.85rem;">
+                            用<strong>画笔</strong>标记抠图区域（遮罩消失），用<strong>橡皮擦</strong>恢复
+                        </p>
+
+                        <!-- 绘制工具栏 -->
+                        <div class="mask-toolbar">
+                            <button
+                                class="mask-tool-btn"
+                                :class="{ active: maskTool === 'brush' }"
+                                @click="selectMaskTool('brush')">
+                                🖌️ 画笔
+                            </button>
+                            <button
+                                class="mask-tool-btn"
+                                :class="{ active: maskTool === 'eraser' }"
+                                @click="selectMaskTool('eraser')">
+                                🧹 橡皮擦
+                            </button>
+                            <button
+                                class="mask-tool-btn"
+                                @click="clearMask">
+                                🗑️ 清除蒙版
+                            </button>
+
+                            <div class="brush-size-control">
+                                <label>画笔大小:</label>
+                                <input
+                                    type="range"
+                                    v-model.number="brushSize"
+                                    min="5"
+                                    max="100"
+                                    step="5">
+                                <span class="param-value">{{ brushSize }}px</span>
+                            </div>
+
+                            <div class="brush-size-control">
+                                <label>遮罩颜色:</label>
+                                <input
+                                    type="color"
+                                    v-model="overlayColor"
+                                    @input="redrawDisplayCanvas"
+                                    style="width: 40px; height: 30px; border: none; cursor: pointer;">
+                            </div>
+                        </div>
+
+                        <!-- Canvas 画布 -->
+                        <div class="mask-canvas-container">
+                            <canvas
+                                ref="displayCanvas"
+                                class="mask-canvas"
+                                @mousedown="startDrawing"
+                                @mousemove="handleMouseMove"
+                                @mouseup="stopDrawing"
+                                @mouseleave="handleMouseLeave"
+                                @mouseenter="handleMouseEnter"
+                                @touchstart="startDrawing"
+                                @touchmove="draw"
+                                @touchend="stopDrawing">
+                            </canvas>
+                            <canvas ref="maskCanvas" style="display: none;"></canvas>
+                            <div ref="brushCursor" class="brush-cursor"></div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" @click="cancelMask">
+                            取消
+                        </button>
+                        <button class="btn btn-success" @click="confirmMask">
+                            ✅ 确认蒙版
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 进度显示 -->
+            <div v-if="processing" class="progress">
+                <div class="spinner"></div>
+                <p>{{ progressMessage }}</p>
+            </div>
+
+            <!-- 错误显示 -->
+            <div v-if="errorMessage" class="error">
+                ❌ {{ errorMessage }}
+            </div>
+
+            <!-- 结果显示 -->
+            <div v-if="result" class="result-section">
+                <h3>✅ 处理结果</h3>
+                <img :src="result.remoteUrl" class="result-image" alt="处理结果">
+                <div class="result-info">
+                    <p><strong>输出文件:</strong> {{ result.outputFilename }}</p>
+                    <p><strong>执行时间:</strong> {{ result.executionTime }}ms</p>
+                    <p><strong>Prompt ID:</strong> {{ result.promptId }}</p>
+                    <p>
+                        <strong>图片URL:</strong>
+                        <a :href="result.remoteUrl" target="_blank" style="color: #667eea; word-break: break-all;">{{ result.remoteUrl }}</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Powered by Vue 3 + Spring Boot + ComfyUI</p>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    serverStatus: false,
+                    selectedSkill: 'matting',
+                    selectedFile: null,
+                    previewUrl: null,
+                    isDragging: false,
+                    processing: false,
+                    progressMessage: '',
+                    errorMessage: null,
+                    result: null,
+                    params: {
+                        // SAM 检测参数（对应工作流节点10）
+                        threshold: 1,
+                        maskHintThreshold: 0.6,
+                        dilation: 0,
+                        bboxExpansion: 1,
+                        // 蒙版处理参数（对应工作流节点23）
+                        expand: -3,
+                        blurRadius: 1
+                    },
+                    // 蒙版绘制相关
+                    maskTool: 'brush',
+                    brushSize: 30,
+                    overlayColor: '#ff0000', // 遮罩颜色，默认红色
+                    isDrawing: false,
+                    maskCanvas: null,
+                    maskCtx: null,
+                    displayCanvas: null, // 显示层 Canvas
+                    displayCtx: null,    // 显示层 Context
+                    originalImage: null,
+                    lastX: 0,
+                    lastY: 0,
+                    pendingUpdate: false, // 是否有待更新的显示
+                    // 弹窗相关
+                    showMaskModal: false,
+                    hasMask: false,
+                    maskBackup: null, // 用于取消时恢复
+                    savedMaskData: null // 保存确认后的蒙版数据
+                };
+            },
+            mounted() {
+                this.checkServerStatus();
+            },
+            methods: {
+                async checkServerStatus() {
+                    try {
+                        const response = await axios.get('/api/matting/status');
+                        this.serverStatus = response.data.code === 200;
+                    } catch (error) {
+                        this.serverStatus = false;
+                        console.error('检查服务器状态失败:', error);
+                    }
+                },
+                selectSkill(skill) {
+                    this.selectedSkill = skill;
+                    this.result = null;
+                    this.errorMessage = null;
+                },
+                triggerFileInput() {
+                    this.$refs.fileInput.click();
+                },
+                handleFileSelect(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        this.loadFile(file);
+                    }
+                },
+                handleFileDrop(event) {
+                    this.isDragging = false;
+                    const file = event.dataTransfer.files[0];
+                    if (file && file.type.startsWith('image/')) {
+                        this.loadFile(file);
+                    }
+                },
+                loadFile(file) {
+                    this.selectedFile = file;
+                    this.previewUrl = URL.createObjectURL(file);
+                    this.result = null;
+                    this.errorMessage = null;
+
+                    // 加载图像到 Canvas
+                    const img = new Image();
+                    img.onload = () => {
+                        this.originalImage = img;
+                        this.$nextTick(() => {
+                            this.initMaskCanvas(img);
+                        });
+                    };
+                    img.src = this.previewUrl;
+                },
+                // 初始化蒙版 Canvas
+                initMaskCanvas(img) {
+                    const maskCanvas = this.$refs.maskCanvas;
+                    const displayCanvas = this.$refs.displayCanvas;
+                    if (!maskCanvas || !displayCanvas) return;
+
+                    // 设置 Canvas 尺寸与图像一致
+                    const maxWidth = 800;
+                    let width = img.width;
+                    let height = img.height;
+
+                    // 缩放图像以适应显示
+                    if (width > maxWidth) {
+                        height = (height * maxWidth) / width;
+                        width = maxWidth;
+                    }
+
+                    // 设置两个 Canvas 的尺寸
+                    maskCanvas.width = width;
+                    maskCanvas.height = height;
+                    displayCanvas.width = width;
+                    displayCanvas.height = height;
+
+                    this.maskCtx = maskCanvas.getContext('2d');
+                    this.displayCtx = displayCanvas.getContext('2d');
+
+                    // 配置绘制属性以获得平滑效果
+                    this.maskCtx.lineJoin = 'round';
+                    this.maskCtx.lineCap = 'round';
+
+                    // 初始化蒙版为全黑（默认不处理任何区域，用户用画笔标记要抠图的区域）
+                    this.maskCtx.fillStyle = 'black';
+                    this.maskCtx.fillRect(0, 0, width, height);
+
+                    // 绘制显示效果
+                    this.redrawDisplayCanvas();
+                    this.updateMaskPreview();
+                },
+                // 重绘显示 Canvas
+                redrawDisplayCanvas() {
+                    const displayCanvas = this.$refs.displayCanvas;
+                    const maskCanvas = this.$refs.maskCanvas;
+                    const ctx = this.displayCtx;
+                    if (!displayCanvas || !maskCanvas || !ctx || !this.originalImage) return;
+
+                    // 清空显示 Canvas
+                    ctx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
+
+                    // 1. 绘制原图
+                    ctx.drawImage(this.originalImage, 0, 0, displayCanvas.width, displayCanvas.height);
+
+                    // 2. 获取蒙版数据
+                    const maskData = this.maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+
+                    // 3. 创建临时 Canvas 用于绘制半透明遮罩
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = displayCanvas.width;
+                    tempCanvas.height = displayCanvas.height;
+                    const tempCtx = tempCanvas.getContext('2d');
+
+                    // 解析遮罩颜色
+                    const colorHex = this.overlayColor;
+                    const r = parseInt(colorHex.slice(1, 3), 16);
+                    const g = parseInt(colorHex.slice(3, 5), 16);
+                    const b = parseInt(colorHex.slice(5, 7), 16);
+
+                    // 创建遮罩层
+                    const overlayData = tempCtx.createImageData(displayCanvas.width, displayCanvas.height);
+
+                    for (let i = 0; i < maskData.data.length; i += 4) {
+                        const maskValue = maskData.data[i]; // 0=黑色/不处理, 255=白色/处理
+
+                        if (maskValue < 128) {
+                            // 黑色蒙版区域 -> 显示半透明遮罩
+                            overlayData.data[i] = r;       // R
+                            overlayData.data[i + 1] = g;   // G
+                            overlayData.data[i + 2] = b;   // B
+                            overlayData.data[i + 3] = 120; // 半透明
+                        } else {
+                            // 白色蒙版区域 -> 透明（不遮罩）
+                            overlayData.data[i] = 0;
+                            overlayData.data[i + 1] = 0;
+                            overlayData.data[i + 2] = 0;
+                            overlayData.data[i + 3] = 0;
+                        }
+                    }
+
+                    // 将遮罩层绘制到临时 Canvas
+                    tempCtx.putImageData(overlayData, 0, 0);
+
+                    // 4. 将遮罩层叠加到显示 Canvas（在原图之上）
+                    ctx.drawImage(tempCanvas, 0, 0);
+                },
+                // 选择绘制工具
+                selectMaskTool(tool) {
+                    this.maskTool = tool;
+                },
+                // 开始绘制
+                startDrawing(event) {
+                    event.preventDefault();
+                    this.isDrawing = true;
+
+                    const displayCanvas = this.$refs.displayCanvas;
+                    const rect = displayCanvas.getBoundingClientRect();
+
+                    let clientX, clientY;
+                    if (event.type.startsWith('touch')) {
+                        clientX = event.touches[0].clientX;
+                        clientY = event.touches[0].clientY;
+                    } else {
+                        clientX = event.clientX;
+                        clientY = event.clientY;
+                    }
+
+                    this.lastX = (clientX - rect.left) * (displayCanvas.width / rect.width);
+                    this.lastY = (clientY - rect.top) * (displayCanvas.height / rect.height);
+
+                    // 在起点绘制一个圆点
+                    this.drawOnMask(this.lastX, this.lastY, this.lastX, this.lastY);
+                },
+                // 处理鼠标移动（包括绘制和光标更新）
+                handleMouseMove(event) {
+                    this.updateBrushCursor(event);
+                    this.draw(event);
+                },
+                // 绘制
+                draw(event) {
+                    if (!this.isDrawing) return;
+
+                    event.preventDefault();
+                    const displayCanvas = this.$refs.displayCanvas;
+                    const rect = displayCanvas.getBoundingClientRect();
+
+                    let clientX, clientY;
+                    if (event.type.startsWith('touch')) {
+                        clientX = event.touches[0].clientX;
+                        clientY = event.touches[0].clientY;
+                    } else {
+                        clientX = event.clientX;
+                        clientY = event.clientY;
+                    }
+
+                    const x = (clientX - rect.left) * (displayCanvas.width / rect.width);
+                    const y = (clientY - rect.top) * (displayCanvas.height / rect.height);
+
+                    // 从上一个点绘制到当前点
+                    this.drawOnMask(this.lastX, this.lastY, x, y);
+
+                    this.lastX = x;
+                    this.lastY = y;
+                },
+                // 更新画笔光标
+                updateBrushCursor(event) {
+                    const cursor = this.$refs.brushCursor;
+                    const displayCanvas = this.$refs.displayCanvas;
+                    if (!cursor || !displayCanvas) return;
+
+                    const rect = displayCanvas.getBoundingClientRect();
+                    cursor.style.left = (event.clientX - rect.left) + 'px';
+                    cursor.style.top = (event.clientY - rect.top) + 'px';
+                    cursor.style.width = this.brushSize + 'px';
+                    cursor.style.height = this.brushSize + 'px';
+                },
+                // 鼠标进入画布
+                handleMouseEnter(event) {
+                    const cursor = this.$refs.brushCursor;
+                    if (cursor) {
+                        cursor.style.display = 'block';
+                        this.updateBrushCursor(event);
+                    }
+                },
+                // 鼠标离开画布
+                handleMouseLeave() {
+                    const cursor = this.$refs.brushCursor;
+                    if (cursor) {
+                        cursor.style.display = 'none';
+                    }
+                    this.stopDrawing();
+                },
+                // 在蒙版上绘制
+                drawOnMask(x1, y1, x2, y2) {
+                    const ctx = this.maskCtx;
+                    if (!ctx) return;
+
+                    // 设置画笔属性
+                    ctx.strokeStyle = this.maskTool === 'brush' ? 'white' : 'black';
+                    ctx.lineWidth = this.brushSize;
+                    ctx.lineJoin = 'round';
+                    ctx.lineCap = 'round';
+
+                    // 绘制线条
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+
+                    // 使用 requestAnimationFrame 优化更新频率
+                    this.scheduleDisplayUpdate();
+                },
+                // 调度显示更新（使用 RAF 防止过度绘制）
+                scheduleDisplayUpdate() {
+                    if (this.pendingUpdate) return;
+
+                    this.pendingUpdate = true;
+                    requestAnimationFrame(() => {
+                        this.redrawDisplayCanvas();
+                        this.updateMaskPreview();
+                        this.pendingUpdate = false;
+                    });
+                },
+                // 停止绘制
+                stopDrawing() {
+                    this.isDrawing = false;
+                },
+                // 清除蒙版
+                clearMask() {
+                    if (!this.originalImage) return;
+                    this.initMaskCanvas(this.originalImage);
+                },
+                // 打开蒙版弹窗
+                openMaskModal() {
+                    this.showMaskModal = true;
+
+                    // 等待弹窗渲染后初始化 Canvas
+                    this.$nextTick(() => {
+                        if (this.originalImage) {
+                            this.initMaskCanvas(this.originalImage);
+                            // 恢复之前保存的蒙版数据
+                            if (this.savedMaskData && this.maskCtx) {
+                                // 创建临时canvas来缩放蒙版
+                                const tempMask = document.createElement('canvas');
+                                tempMask.width = this.savedMaskData.width;
+                                tempMask.height = this.savedMaskData.height;
+                                const tempCtx = tempMask.getContext('2d');
+                                tempCtx.putImageData(this.savedMaskData.imageData, 0, 0);
+
+                                // 缩放到当前canvas尺寸
+                                const maskCanvas = this.$refs.maskCanvas;
+                                this.maskCtx.drawImage(tempMask, 0, 0, maskCanvas.width, maskCanvas.height);
+                                this.redrawDisplayCanvas();
+                            }
+                            // 备份当前状态用于取消恢复
+                            const maskCanvas = this.$refs.maskCanvas;
+                            if (maskCanvas && this.maskCtx) {
+                                this.maskBackup = this.maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+                            }
+                        }
+                    });
+                },
+                // 关闭蒙版弹窗
+                closeMaskModal() {
+                    this.showMaskModal = false;
+                },
+                // 确认蒙版
+                confirmMask() {
+                    // 检查是否有绘制蒙版（检查是否有白色像素）
+                    const maskCanvas = this.$refs.maskCanvas;
+                    if (maskCanvas && this.maskCtx) {
+                        const imageData = this.maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+                        let hasWhite = false;
+                        for (let i = 0; i < imageData.data.length; i += 4) {
+                            if (imageData.data[i] > 128) {
+                                hasWhite = true;
+                                break;
+                            }
+                        }
+                        this.hasMask = hasWhite;
+
+                        // 保存蒙版数据和尺寸，供后续生成图像使用
+                        this.savedMaskData = {
+                            imageData: imageData,
+                            width: maskCanvas.width,
+                            height: maskCanvas.height
+                        };
+                    }
+
+                    this.showMaskModal = false;
+                    this.maskBackup = null;
+                },
+                // 取消蒙版编辑
+                cancelMask() {
+                    // 恢复备份的蒙版
+                    if (this.maskBackup && this.maskCtx) {
+                        this.maskCtx.putImageData(this.maskBackup, 0, 0);
+                    }
+                    this.showMaskModal = false;
+                    this.maskBackup = null;
+                },
+                // 更新蒙版预览（预览区域已移除，保留空方法以兼容调用）
+                updateMaskPreview() {
+                    // 预览区域已移除
+                },
+                // 生成带蒙版的图像（ComfyUI Alpha蒙版格式）
+                async generateMaskedImage() {
+                    return new Promise((resolve) => {
+                        if (!this.originalImage) {
+                            resolve(null);
+                            return;
+                        }
+
+                        const resultCanvas = document.createElement('canvas');
+                        resultCanvas.width = this.originalImage.width;
+                        resultCanvas.height = this.originalImage.height;
+                        const ctx = resultCanvas.getContext('2d');
+
+                        // 先绘制原图
+                        ctx.drawImage(this.originalImage, 0, 0);
+
+                        // 如果有保存的蒙版数据，应用蒙版
+                        if (this.savedMaskData && this.hasMask) {
+                            // 将蒙版缩放到原始尺寸
+                            const scaledMask = document.createElement('canvas');
+                            scaledMask.width = this.originalImage.width;
+                            scaledMask.height = this.originalImage.height;
+                            const scaledCtx = scaledMask.getContext('2d');
+
+                            // 先将保存的蒙版数据绘制到临时canvas
+                            const tempMask = document.createElement('canvas');
+                            tempMask.width = this.savedMaskData.width;
+                            tempMask.height = this.savedMaskData.height;
+                            const tempCtx = tempMask.getContext('2d');
+                            tempCtx.putImageData(this.savedMaskData.imageData, 0, 0);
+
+                            // 缩放到原图尺寸
+                            scaledCtx.drawImage(tempMask, 0, 0, scaledMask.width, scaledMask.height);
+
+                            // ComfyUI Alpha蒙版格式（推荐）：
+                            // RGB = 原图完整颜色信息（保持不变）
+                            // Alpha = 蒙版标记（128=要处理的区域，255=不处理）
+
+                            const resultData = ctx.getImageData(0, 0, resultCanvas.width, resultCanvas.height);
+                            const scaledMaskData = scaledCtx.getImageData(0, 0, scaledMask.width, scaledMask.height);
+
+                            for (let i = 0; i < resultData.data.length; i += 4) {
+                                const maskValue = scaledMaskData.data[i]; // 0=黑色/不抠图, 255=白色/要抠图
+
+                                // RGB通道保持原图不变（drawImage已经绘制了原图）
+
+                                if (maskValue > 128) {
+                                    // 白色蒙版区域（用户画笔标记的，要抠图）
+                                    // Alpha设为128（半透明，作为蒙版标记）
+                                    resultData.data[i + 3] = 128;
+                                } else {
+                                    // 黑色蒙版区域（背景，不抠图）
+                                    // Alpha设为255（完全不透明，保留原图）
+                                    resultData.data[i + 3] = 255;
+                                }
+                            }
+
+                            ctx.putImageData(resultData, 0, 0);
+                        }
+
+                        // 转换为 PNG Blob
+                        resultCanvas.toBlob((blob) => {
+                            resolve(blob);
+                        }, 'image/png');
+                    });
+                },
+                async executeSkill() {
+                    if (!this.selectedFile) {
+                        this.errorMessage = '请先选择一张图片';
+                        return;
+                    }
+
+                    this.processing = true;
+                    this.errorMessage = null;
+                    this.result = null;
+                    this.progressMessage = '正在生成带蒙版的图像...';
+
+                    try {
+                        // 生成带蒙版的图像（将蒙版作为 alpha 通道）
+                        const maskedImageBlob = await this.generateMaskedImage();
+
+                        // 使用 clipspace-mask.png 格式的文件名（ComfyUI 识别的蒙版格式）
+                        const maskedImageFile = new File(
+                            [maskedImageBlob],
+                            'clipspace-mask-' + Date.now() + '.png',
+                            { type: 'image/png' }
+                        );
+
+                        this.progressMessage = '正在上传并处理图像抠图...';
+
+                        const formData = new FormData();
+                        formData.append('image', maskedImageFile); // 上传带蒙版的图像
+                        // SAM 检测参数
+                        formData.append('threshold', this.params.threshold);
+                        formData.append('maskHintThreshold', this.params.maskHintThreshold);
+                        formData.append('dilation', this.params.dilation);
+                        formData.append('bboxExpansion', this.params.bboxExpansion);
+                        // 蒙版处理参数
+                        formData.append('expand', this.params.expand);
+                        formData.append('blurRadius', this.params.blurRadius);
+
+                        const response = await axios.post('/api/matting/execute', formData, {
+                            headers: {
+                                'Content-Type': 'multipart/form-data'
+                            }
+                        });
+
+                        if (response.data.code === 200) {
+                            this.result = response.data.data;
+                            this.progressMessage = '处理完成！';
+                        } else {
+                            this.errorMessage = response.data.message || '处理失败';
+                        }
+                    } catch (error) {
+                        console.error('抠图失败:', error);
+                        this.errorMessage = error.response?.data?.message || error.message || '网络错误';
+                    } finally {
+                        this.processing = false;
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

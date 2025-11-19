@@ -621,8 +621,8 @@
                     </div>
                 </div>
                 <div class="button-group" style="margin-top: 20px;">
-                    <button class="btn btn-primary" onclick="downloadResult()">
-                        📥 下载结果
+                    <button class="btn btn-primary" onclick="viewResult()">
+                        🔗 查看原图
                     </button>
                     <button class="btn btn-secondary" onclick="newMatting()">
                         🆕 新建抠图
@@ -635,6 +635,7 @@
     <script>
         let selectedFile = null;
         let resultFilename = null;
+        let resultRemoteUrl = null;
 
         // 文件上传处理
         const uploadArea = document.getElementById('uploadArea');
@@ -749,8 +750,9 @@
                 if (result.code === 200 && result.data && result.data.success) {
                     // 显示结果
                     document.getElementById('originalImage').src = previewImage.src;
-                    document.getElementById('resultImage').src = result.data.outputUrl;
+                    document.getElementById('resultImage').src = result.data.remoteUrl;
                     resultFilename = result.data.outputFilename;
+                    resultRemoteUrl = result.data.remoteUrl;
                     document.getElementById('resultSection').classList.add('show');
                 } else {
                     // 更好的错误处理
@@ -783,10 +785,10 @@
             document.getElementById('resultSection').classList.remove('show');
         }
 
-        // 下载结果
-        function downloadResult() {
-            if (resultFilename) {
-                window.location.href = '/output/' + resultFilename;
+        // 查看原图
+        function viewResult() {
+            if (resultRemoteUrl) {
+                window.open(resultRemoteUrl, '_blank');
             }
         }
 

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.yimeil.comfyui.config.ComfyUIConfig;
+import com.yimeil.comfyui.model.CollageResult;
 import com.yimeil.comfyui.model.MattingRequest;
 import com.yimeil.comfyui.model.MattingResult;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,8 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -320,18 +323,22 @@ public class ComfyUIService {
                         String type = firstImage.has("type") ?
                                 firstImage.get("type").asText() : "output";
 
-                        downloadImage(filename, subfolder, type, "output");
-                        outputFilename = filename;
+                        // 构建 ComfyUI 远程 URL
+                        String remoteUrl = config.getApi().getBaseUrl() + "/view?filename=" + filename;
+                        if (!subfolder.isEmpty()) {
+                            remoteUrl += "&subfolder=" + subfolder;
+                        }
+                        remoteUrl += "&type=" + type;
+
+                        result.setSuccess(true);
+                        result.setOutputFilename(filename);
+                        result.setRemoteUrl(remoteUrl);
                         break;
                     }
                 }
             }
 
-            if (outputFilename != null) {
-                result.setSuccess(true);
-                result.setOutputFilename(outputFilename);
-                result.setOutputUrl("/output/" + outputFilename);
-            } else {
+            if (!result.isSuccess()) {
                 result.setSuccess(false);
                 result.setErrorMessage("未找到输出图片");
             }
@@ -407,8 +414,7 @@ public class ComfyUIService {
             // 4. 执行工作流
             log.info("runKeywordMatting - 准备提交工作流，节点数: {}",
                      workflow.isObject() ? ((ObjectNode)workflow).size() : 0);
-            String workflowJson = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(workflow);
-            log.info("runKeywordMatting - 完整工作流JSON:\n{}", workflowJson);
+
             String promptId = executeWorkflow(workflow);
             result.setPromptId(promptId);
 
@@ -428,18 +434,22 @@ public class ComfyUIService {
                         String type = firstImage.has("type") ?
                                 firstImage.get("type").asText() : "output";
 
-                        downloadImage(filename, subfolder, type, "output");
-                        outputFilename = filename;
+                        // 构建 ComfyUI 远程 URL
+                        String remoteUrl = config.getApi().getBaseUrl() + "/view?filename=" + filename;
+                        if (!subfolder.isEmpty()) {
+                            remoteUrl += "&subfolder=" + subfolder;
+                        }
+                        remoteUrl += "&type=" + type;
+
+                        result.setSuccess(true);
+                        result.setOutputFilename(filename);
+                        result.setRemoteUrl(remoteUrl);
                         break;
                     }
                 }
             }
 
-            if (outputFilename != null) {
-                result.setSuccess(true);
-                result.setOutputFilename(outputFilename);
-                result.setOutputUrl("/output/" + outputFilename);
-            } else {
+            if (!result.isSuccess()) {
                 result.setSuccess(false);
                 result.setErrorMessage("未找到输出图片");
             }
@@ -452,6 +462,157 @@ public class ComfyUIService {
 
         result.setExecutionTime(System.currentTimeMillis() - startTime);
         return result;
+    }
+
+    /**
+     * 执行Excel产品拼接
+     *
+     * @param excelFile Excel文件
+     * @param params 拼接参数
+     * @return 拼接结果
+     */
+    public CollageResult runCollage(MultipartFile excelFile, Map<String, Object> params) {
+        CollageResult result = new CollageResult();
+        long startTime = System.currentTimeMillis();
+
+        try {
+            // 1. 加载拼接工作流
+            String workflowName = "collage-excel-v-api.json";
+            JsonNode workflow = loadWorkflowFromResource(workflowName);
+
+            // 2. 上传Excel文件到ComfyUI
+            String uploadedExcelName = uploadFile(excelFile, "input");
+
+            // 3. 更新工作流参数
+            // 节点 34: ExcelSKULoader - 主要的Excel加载节点
+            workflow = updateWorkflowParams(workflow, "34", "excel_file", uploadedExcelName);
+            workflow = updateWorkflowParams(workflow, "34", "sheet_name", params.get("sheetName"));
+            workflow = updateWorkflowParams(workflow, "34", "combined_sku_col", params.get("combinedSkuCol"));
+            workflow = updateWorkflowParams(workflow, "34", "sku_col", params.get("skuCol"));
+            workflow = updateWorkflowParams(workflow, "34", "pcs_col", params.get("pcsCol"));
+            workflow = updateWorkflowParams(workflow, "34", "url_col", params.get("urlCol"));
+            workflow = updateWorkflowParams(workflow, "34", "start_row", params.get("startRow"));
+            workflow = updateWorkflowParams(workflow, "34", "use_cache", params.get("useCache"));
+            workflow = updateWorkflowParams(workflow, "34", "cache_size", params.get("cacheSize"));
+            workflow = updateWorkflowParams(workflow, "34", "label_format", params.get("labelFormat"));
+            workflow = updateWorkflowParams(workflow, "34", "output_mode", params.get("outputMode"));
+            workflow = updateWorkflowParams(workflow, "34", "filename_prefix", params.get("filenamePrefix"));
+            workflow = updateWorkflowParams(workflow, "34", "filter_combined_sku", params.get("filterCombinedSku"));
+
+            // 节点 12: SmartProductCollageBatch - 拼接节点
+            workflow = updateWorkflowParams(workflow, "12", "images_per_collage", params.get("imagesPerCollage"));
+            workflow = updateWorkflowParams(workflow, "12", "layout", params.get("layout"));
+            workflow = updateWorkflowParams(workflow, "12", "output_width", params.get("outputWidth"));
+            workflow = updateWorkflowParams(workflow, "12", "output_height", params.get("outputHeight"));
+            workflow = updateWorkflowParams(workflow, "12", "spacing", params.get("spacing"));
+            workflow = updateWorkflowParams(workflow, "12", "min_spacing", params.get("minSpacing"));
+            workflow = updateWorkflowParams(workflow, "12", "outer_padding", params.get("outerPadding"));
+            // productScale: 前端传百分比(10-100)，需要转换为比例值(0.1-1.0)
+            Object productScaleObj = params.get("productScale");
+            if (productScaleObj instanceof Number) {
+                double productScale = ((Number) productScaleObj).doubleValue() / 100.0;
+                workflow = updateWorkflowParams(workflow, "12", "product_scale", productScale);
+            }
+            workflow = updateWorkflowParams(workflow, "12", "crop_margin", params.get("cropMargin"));
+            workflow = updateWorkflowParams(workflow, "12", "skip_empty", params.get("skipEmpty"));
+            workflow = updateWorkflowParams(workflow, "12", "label_font_size", params.get("labelFontSize"));
+            workflow = updateWorkflowParams(workflow, "12", "label_position", params.get("labelPosition"));
+            workflow = updateWorkflowParams(workflow, "12", "label_margin", params.get("labelMargin"));
+            workflow = updateWorkflowParams(workflow, "12", "hide_pcs_one", params.get("hidePcsOne"));
+            workflow = updateWorkflowParams(workflow, "12", "adaptive_direction", params.get("adaptiveDirection"));
+
+            // 4. 执行工作流
+            log.info("runCollage - 准备提交工作流");
+            String promptId = executeWorkflow(workflow);
+            result.setPromptId(promptId);
+
+            // 5. 等待完成
+            JsonNode outputs = waitForCompletion(promptId);
+
+            // 6. 下载所有结果图片
+            List<CollageResult.ImageInfo> imageInfoList = new ArrayList<>();
+
+            for (JsonNode nodeOutput : outputs) {
+                if (nodeOutput.has("images")) {
+                    JsonNode images = nodeOutput.get("images");
+                    if (images.isArray()) {
+                        for (JsonNode imageNode : images) {
+                            String filename = imageNode.get("filename").asText();
+                            String subfolder = imageNode.has("subfolder") ?
+                                    imageNode.get("subfolder").asText() : "";
+                            String type = imageNode.has("type") ?
+                                    imageNode.get("type").asText() : "output";
+
+                            CollageResult.ImageInfo imageInfo = new CollageResult.ImageInfo();
+                            imageInfo.setFilename(filename);
+                            imageInfo.setSubfolder(subfolder);
+
+                            // 构建 ComfyUI 远程 URL
+                            String remoteUrl = config.getApi().getBaseUrl() + "/view?filename=" + filename;
+                            if (!subfolder.isEmpty()) {
+                                remoteUrl += "&subfolder=" + subfolder;
+                            }
+                            remoteUrl += "&type=" + type;
+                            imageInfo.setRemoteUrl(remoteUrl);
+
+                            imageInfoList.add(imageInfo);
+                        }
+                    }
+                }
+            }
+
+            if (!imageInfoList.isEmpty()) {
+                result.setSuccess(true);
+                result.setImages(imageInfoList);
+                result.setImageCount(imageInfoList.size());
+            } else {
+                result.setSuccess(false);
+                result.setErrorMessage("未找到输出图片");
+            }
+
+        } catch (Exception e) {
+            log.error("Excel产品拼接失败", e);
+            result.setSuccess(false);
+            result.setErrorMessage(e.getMessage());
+        }
+
+        result.setExecutionTime(System.currentTimeMillis() - startTime);
+        return result;
+    }
+
+    /**
+     * 上传文件到ComfyUI指定目录
+     */
+    public String uploadFile(MultipartFile file, String subfolder) throws IOException, ParseException {
+        log.info("上传文件: {} 到目录: {}", file.getOriginalFilename(), subfolder);
+
+        String url = config.getApi().getBaseUrl() + "/upload/image";
+
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+            HttpPost httpPost = new HttpPost(url);
+
+            // 构建 multipart 请求
+            MultipartEntityBuilder builder = MultipartEntityBuilder.create()
+                    .addBinaryBody("image", file.getInputStream(),
+                            ContentType.APPLICATION_OCTET_STREAM,
+                            file.getOriginalFilename())
+                    .addTextBody("overwrite", "true");
+
+            if (subfolder != null && !subfolder.isEmpty()) {
+                builder.addTextBody("subfolder", subfolder);
+            }
+
+            httpPost.setEntity(builder.build());
+
+            try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
+                String responseBody = EntityUtils.toString(response.getEntity(), "UTF-8");
+                JsonNode jsonNode = objectMapper.readTree(responseBody);
+                String uploadedName = jsonNode.get("name").asText();
+
+                log.info("文件上传成功: {}", uploadedName);
+                return uploadedName;
+            }
+        }
     }
 
     /**

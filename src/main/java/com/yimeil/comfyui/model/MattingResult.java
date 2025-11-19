@@ -19,9 +19,9 @@ public class MattingResult {
     private String outputFilename;
 
     /**
-     * 输出图片 URL
+     * 输出图片 URL (ComfyUI 远程)
      */
-    private String outputUrl;
+    private String remoteUrl;
 
     /**
      * Prompt ID

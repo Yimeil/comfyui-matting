@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ComfyUI Excel产品拼接</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        #app {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        /* 左右布局 */
+        .main-layout {
+            display: flex;
+            gap: 30px;
+        }
+
+        .left-panel {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .right-panel {
+            width: 350px;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 1000px) {
+            .main-layout {
+                flex-direction: column;
+            }
+            .right-panel {
+                width: 100%;
+            }
+        }
+
+        /* 表单样式 */
+        .form-section {
+            margin-bottom: 25px;
+        }
+
+        .form-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.1rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #555;
+            font-size: 0.9rem;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .param-value {
+            color: #667eea;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+
+        /* 文件上传 */
+        .file-upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 10px;
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #fafafa;
+        }
+
+        .file-upload-area:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+
+        .file-upload-area.has-file {
+            border-color: #28a745;
+            background: #f0fff4;
+        }
+
+        .file-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e8f5e9;
+            border-radius: 8px;
+            color: #2e7d32;
+            font-size: 0.9rem;
+        }
+
+        /* 按钮 */
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        /* 进度和结果 */
+        .progress {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f0f0ff;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .result-section {
+            margin-top: 20px;
+        }
+
+        .result-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .result-images {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .result-image-item {
+            border: 2px solid #eee;
+            border-radius: 10px;
+            overflow: hidden;
+            background: white;
+        }
+
+        .result-image-item img {
+            width: 100%;
+            display: block;
+        }
+
+        .result-image-item .image-info {
+            padding: 10px;
+            font-size: 0.85rem;
+            color: #666;
+            border-top: 1px solid #eee;
+        }
+
+        .result-info {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+
+        .result-info p {
+            margin-bottom: 8px;
+            color: #555;
+            font-size: 0.9rem;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 30px;
+            opacity: 0.8;
+        }
+
+        /* 返回链接 */
+        .back-link {
+            display: inline-block;
+            margin-bottom: 15px;
+            color: white;
+            text-decoration: none;
+            font-size: 0.95rem;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <a href="index.html" class="back-link">← 返回首页</a>
+
+        <div class="header">
+            <h1>📊 Excel产品拼接工具</h1>
+            <p style="opacity: 0.9;">从Excel读取SKU数据，批量生成产品拼接图</p>
+        </div>
+
+        <div class="card">
+            <div class="main-layout">
+                <!-- 左侧：Excel配置 -->
+                <div class="left-panel">
+                    <!-- Excel文件输入 -->
+                    <div class="form-section">
+                        <h3>📁 Excel文件</h3>
+
+                        <!-- 输入方式切换 -->
+                        <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                                <input type="radio" v-model="inputMode" value="file" style="width: 16px; height: 16px;">
+                                <span>上传文件</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                                <input type="radio" v-model="inputMode" value="url" style="width: 16px; height: 16px;">
+                                <span>HTTP地址</span>
+                            </label>
+                        </div>
+
+                        <!-- 文件上传模式 -->
+                        <div v-if="inputMode === 'file'">
+                            <div
+                                class="file-upload-area"
+                                :class="{ 'has-file': excelFile }"
+                                @click="triggerFileInput"
+                                @dragover.prevent
+                                @drop.prevent="handleFileDrop">
+                                <div v-if="!excelFile">
+                                    <p style="font-size: 1.1rem; color: #666; margin-bottom: 8px;">
+                                        点击或拖拽上传Excel文件
+                                    </p>
+                                    <p style="font-size: 0.85rem; color: #999;">
+                                        支持 .xlsx, .xls 格式
+                                    </p>
+                                </div>
+                                <div v-else class="file-info">
+                                    ✅ {{ excelFile.name }} ({{ formatFileSize(excelFile.size) }})
+                                </div>
+                            </div>
+                            <input
+                                type="file"
+                                ref="fileInput"
+                                @change="handleFileSelect"
+                                accept=".xlsx,.xls"
+                                style="display: none;">
+                        </div>
+
+                        <!-- URL输入模式 -->
+                        <div v-if="inputMode === 'url'">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <input
+                                    type="text"
+                                    v-model="excelUrl"
+                                    placeholder="请输入Excel文件的HTTP地址"
+                                    style="width: 100%;">
+                                <p style="font-size: 0.8rem; color: #999; margin-top: 5px;">
+                                    例如：http://example.com/data.xlsx
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 文件名前缀 -->
+                    <div class="form-section">
+                        <h3>📁 输出设置</h3>
+                        <div class="form-group">
+                            <label>文件名前缀</label>
+                            <input type="text" v-model="params.filenamePrefix" placeholder="collage/%date:yyyy-MM-dd%/">
+                            <p style="font-size: 0.8rem; color: #999; margin-top: 5px;">
+                                支持日期变量：%date:yyyy-MM-dd%
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button
+                            class="btn btn-primary"
+                            @click="executeCollage"
+                            :disabled="(!excelFile && !excelUrl) || processing">
+                            {{ processing ? '处理中...' : '🚀 开始生成拼接图' }}
+                        </button>
+                    </div>
+
+                    <!-- 进度显示 -->
+                    <div v-if="processing" class="progress" style="margin-top: 20px;">
+                        <div class="spinner"></div>
+                        <p>{{ progressMessage }}</p>
+                    </div>
+
+                    <!-- 错误显示 -->
+                    <div v-if="errorMessage" class="error" style="margin-top: 20px;">
+                        {{ errorMessage }}
+                    </div>
+
+                    <!-- 结果显示 -->
+                    <div v-if="result" class="result-section" style="margin-top: 20px;">
+                        <h3 style="margin-bottom: 15px; color: #28a745; font-size: 1.1rem;">✅ 生成完成</h3>
+                        <div class="result-info" style="margin-bottom: 15px;">
+                            <p><strong>生成图片数:</strong> {{ result.imageCount }}</p>
+                            <p><strong>执行时间:</strong> {{ result.executionTime }}ms</p>
+                            <p style="margin-bottom: 0;"><strong>Prompt ID:</strong> {{ result.promptId }}</p>
+                        </div>
+                        <div class="result-images" style="max-height: 400px; overflow-y: auto;">
+                            <div v-for="(image, index) in result.images" :key="index" class="result-image-item">
+                                <img :src="image.remoteUrl" :alt="image.filename">
+                                <div class="image-info">
+                                    {{ image.filename }}
+                                    <div style="margin-top: 5px;">
+                                        <a :href="image.remoteUrl" target="_blank" style="color: #667eea; font-size: 0.75rem;">查看原图</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧：拼接参数 -->
+                <div class="right-panel">
+                    <div class="form-section">
+                        <h3>🖼️ 拼接参数</h3>
+
+                        <div class="form-group">
+                            <label>每张拼接图数量 <span class="param-value">{{ params.imagesPerCollage }}</span></label>
+                            <input type="range" v-model.number="params.imagesPerCollage" min="1" max="25" step="1">
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>输出宽度</label>
+                                <input type="number" v-model.number="params.outputWidth" min="100" step="100">
+                            </div>
+                            <div class="form-group">
+                                <label>输出高度</label>
+                                <input type="number" v-model.number="params.outputHeight" min="100" step="100">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>布局模式</label>
+                            <select v-model="params.layout">
+                                <option value="auto">自动</option>
+                                <option value="grid">网格</option>
+                                <option value="row">行</option>
+                                <option value="column">列</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>间距 <span class="param-value">{{ params.spacing }}px</span></label>
+                            <input type="range" v-model.number="params.spacing" min="0" max="100" step="5">
+                        </div>
+
+                        <div class="form-group">
+                            <label>外边距 <span class="param-value">{{ params.outerPadding }}px</span></label>
+                            <input type="range" v-model.number="params.outerPadding" min="0" max="200" step="10">
+                        </div>
+
+                        <div class="form-group">
+                            <label>产品缩放 <span class="param-value">{{ params.productScale }}%</span></label>
+                            <input type="range" v-model.number="params.productScale" min="30" max="200" step="5">
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>🏷️ 标签设置</h3>
+
+                        <div class="form-group">
+                            <label>标签格式</label>
+                            <input type="text" v-model="params.labelFormat" placeholder="×{pcs}">
+                        </div>
+
+                        <div class="form-group">
+                            <label>字体大小 <span class="param-value">{{ params.labelFontSize }}px</span></label>
+                            <input type="range" v-model.number="params.labelFontSize" min="20" max="150" step="5">
+                        </div>
+
+                        <div class="form-group">
+                            <label>标签位置</label>
+                            <select v-model="params.labelPosition">
+                                <option value="bottom">底部</option>
+                                <option value="top">顶部</option>
+                                <option value="left">左侧</option>
+                                <option value="right">右侧</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>标签边距 <span class="param-value">{{ params.labelMargin }}px</span></label>
+                            <input type="range" v-model.number="params.labelMargin" min="0" max="100" step="5">
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" v-model="params.hidePcsOne">
+                                隐藏数量为1的标签
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>⚙️ 其他设置</h3>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" v-model="params.useCache">
+                                启用图片缓存
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" v-model="params.skipEmpty">
+                                跳过空图片
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label>输出模式</label>
+                            <select v-model="params.outputMode">
+                                <option value="by_combined_sku">按组合SKU</option>
+                                <option value="all">全部</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Powered by Vue 3 + Spring Boot + ComfyUI</p>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    inputMode: 'file', // 'file' 或 'url'
+                    excelFile: null,
+                    excelUrl: '',
+                    processing: false,
+                    progressMessage: '',
+                    errorMessage: null,
+                    result: null,
+                    params: {
+                        // Excel配置
+                        sheetName: 'Sheet1',
+                        combinedSkuCol: 'A',
+                        skuCol: 'B',
+                        pcsCol: 'C',
+                        urlCol: 'D',
+                        startRow: 2,
+                        filterCombinedSku: '',
+
+                        // 拼接参数
+                        imagesPerCollage: 9,
+                        layout: 'auto',
+                        outputWidth: 1600,
+                        outputHeight: 1600,
+                        spacing: 0,
+                        outerPadding: 50,
+                        productScale: 100,
+                        cropMargin: 1,
+                        skipEmpty: false,
+
+                        // 标签设置
+                        labelFormat: '×{pcs}',
+                        labelFontSize: 80,
+                        labelPosition: 'bottom',
+                        labelMargin: 30,
+                        hidePcsOne: true,
+
+                        // 其他设置
+                        useCache: true,
+                        cacheSize: 100,
+                        outputMode: 'by_combined_sku',
+                        filenamePrefix: 'collage/%date:yyyy-MM-dd%/',
+                        adaptiveDirection: 'auto'
+                    }
+                };
+            },
+            methods: {
+                triggerFileInput() {
+                    this.$refs.fileInput.click();
+                },
+                handleFileSelect(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        this.excelFile = file;
+                        this.result = null;
+                        this.errorMessage = null;
+                    }
+                },
+                handleFileDrop(event) {
+                    const file = event.dataTransfer.files[0];
+                    if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+                        this.excelFile = file;
+                        this.result = null;
+                        this.errorMessage = null;
+                    }
+                },
+                formatFileSize(bytes) {
+                    if (bytes < 1024) return bytes + ' B';
+                    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+                },
+                async executeCollage() {
+                    // 验证输入
+                    if (this.inputMode === 'file' && !this.excelFile) {
+                        this.errorMessage = '请先上传Excel文件';
+                        return;
+                    }
+                    if (this.inputMode === 'url' && !this.excelUrl.trim()) {
+                        this.errorMessage = '请输入Excel文件的HTTP地址';
+                        return;
+                    }
+
+                    this.processing = true;
+                    this.errorMessage = null;
+                    this.result = null;
+                    this.progressMessage = this.inputMode === 'file' ? '正在上传Excel文件...' : '正在获取Excel文件...';
+
+                    try {
+                        const formData = new FormData();
+
+                        // 根据输入模式添加文件或URL
+                        if (this.inputMode === 'file') {
+                            formData.append('excelFile', this.excelFile);
+                        } else {
+                            formData.append('excelUrl', this.excelUrl.trim());
+                        }
+
+                        // Excel配置
+                        formData.append('sheetName', this.params.sheetName);
+                        formData.append('combinedSkuCol', this.params.combinedSkuCol);
+                        formData.append('skuCol', this.params.skuCol);
+                        formData.append('pcsCol', this.params.pcsCol);
+                        formData.append('urlCol', this.params.urlCol);
+                        formData.append('startRow', this.params.startRow);
+                        formData.append('filterCombinedSku', this.params.filterCombinedSku);
+
+                        // 拼接参数
+                        formData.append('imagesPerCollage', this.params.imagesPerCollage);
+                        formData.append('layout', this.params.layout);
+                        formData.append('outputWidth', this.params.outputWidth);
+                        formData.append('outputHeight', this.params.outputHeight);
+                        formData.append('spacing', this.params.spacing);
+                        formData.append('outerPadding', this.params.outerPadding);
+                        formData.append('productScale', this.params.productScale);
+                        formData.append('cropMargin', this.params.cropMargin);
+                        formData.append('skipEmpty', this.params.skipEmpty);
+
+                        // 标签设置
+                        formData.append('labelFormat', this.params.labelFormat);
+                        formData.append('labelFontSize', this.params.labelFontSize);
+                        formData.append('labelPosition', this.params.labelPosition);
+                        formData.append('labelMargin', this.params.labelMargin);
+                        formData.append('hidePcsOne', this.params.hidePcsOne);
+
+                        // 其他设置
+                        formData.append('useCache', this.params.useCache);
+                        formData.append('cacheSize', this.params.cacheSize);
+                        formData.append('outputMode', this.params.outputMode);
+                        formData.append('filenamePrefix', this.params.filenamePrefix);
+                        formData.append('adaptiveDirection', this.params.adaptiveDirection);
+
+                        this.progressMessage = '正在生成拼接图...';
+
+                        const response = await axios.post('/api/collage/execute', formData, {
+                            headers: {
+                                'Content-Type': 'multipart/form-data'
+                            }
+                        });
+
+                        if (response.data.code === 200) {
+                            this.result = response.data.data;
+                            this.progressMessage = '生成完成！';
+                        } else {
+                            this.errorMessage = response.data.message || '生成失败';
+                        }
+                    } catch (error) {
+                        console.error('生成拼接图失败:', error);
+                        this.errorMessage = error.response?.data?.message || error.message || '网络错误';
+                    } finally {
+                        this.processing = false;
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

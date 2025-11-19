@@ -1,0 +1,134 @@
+{
+  "7": {
+    "inputs": {
+      "excel_file": "C:\\Users\\Administrator\\Desktop\\Flux整合包\\1\\1\\input\\产品\\test-spu.xlsx",
+      "sheet_name": "Sheet1",
+      "combined_sku_col": "A",
+      "sku_col": "B",
+      "pcs_col": "C",
+      "url_col": "D",
+      "start_row": 2,
+      "use_cache": true,
+      "cache_size": 100,
+      "label_format": "×{pcs}",
+      "output_mode": "by_combined_sku",
+      "filename_prefix": "",
+      "filter_combined_sku": ""
+    },
+    "class_type": "ExcelSKULoader",
+    "_meta": {
+      "title": "📊 Excel SKU数据加载器"
+    }
+  },
+  "9": {
+    "inputs": {
+      "images_per_collage": 15,
+      "layout": "auto",
+      "output_width": 1600,
+      "output_height": 1600,
+      "spacing": 240,
+      "min_spacing": "fast",
+      "outer_padding": 60,
+      "product_scale": 80,
+      "crop_margin": 1,
+      "skip_empty": "30",
+      "labels": [
+        "7",
+        1
+      ],
+      "label_font_size": "",
+      "label_position": 100,
+      "label_margin": "bottom",
+      "hide_pcs_one": 40,
+      "adaptive_direction": false,
+      "images": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "SmartProductCollageBatch",
+    "_meta": {
+      "title": "智能产品拼接·批量版"
+    }
+  },
+  "10": {
+    "inputs": {
+      "images": [
+        "9",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "预览拼接结果"
+    }
+  },
+  "12": {
+    "inputs": {
+      "images_per_collage": 9,
+      "layout": "auto",
+      "output_width": 1600,
+      "output_height": 1600,
+      "spacing": 0,
+      "min_spacing": 10,
+      "outer_padding": 50,
+      "product_scale": 1,
+      "crop_margin": 1,
+      "skip_empty": false,
+      "labels": [
+        "34",
+        1
+      ],
+      "label_font_size": 80,
+      "label_position": "bottom",
+      "label_margin": 30,
+      "hide_pcs_one": 30,
+      "adaptive_direction": "auto",
+      "images": [
+        "34",
+        0
+      ]
+    },
+    "class_type": "SmartProductCollageBatch",
+    "_meta": {
+      "title": "智能产品拼接·批量版v1.0🔁"
+    }
+  },
+  "15": {
+    "inputs": {
+      "filename_prefix": [
+        "34",
+        3
+      ],
+      "images": [
+        "12",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "保存图像"
+    }
+  },
+  "34": {
+    "inputs": {
+      "excel_file": "test-spu.xlsx",
+      "sheet_name": "Sheet1",
+      "combined_sku_col": "A",
+      "sku_col": "B",
+      "pcs_col": "C",
+      "url_col": "D",
+      "start_row": 2,
+      "use_cache": true,
+      "cache_size": 100,
+      "label_format": "×{pcs}",
+      "output_mode": "by_combined_sku",
+      "filename_prefix": "collage/%date:yyyy-MM-dd%/",
+      "filter_combined_sku": ""
+    },
+    "class_type": "ExcelSKULoader",
+    "_meta": {
+      "title": "📊 Excel SKU数据加载器"
+    }
+  }
+}
