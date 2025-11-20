@@ -18,8 +18,6 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Excel产品拼接 API 控制器
@@ -54,46 +52,11 @@ public class CollageController {
 
             log.info("收到Excel产品拼接请求: {}", finalExcelFile.getOriginalFilename());
 
-            // 构建参数 Map
-            Map<String, Object> params = new HashMap<>();
-
-            // Excel配置
-            params.put("sheetName", collageRequest.getSheetName());
-            params.put("combinedSkuCol", collageRequest.getCombinedSkuCol());
-            params.put("skuCol", collageRequest.getSkuCol());
-            params.put("pcsCol", collageRequest.getPcsCol());
-            params.put("urlCol", collageRequest.getUrlCol());
-            params.put("startRow", collageRequest.getStartRow());
-            params.put("filterCombinedSku", collageRequest.getFilterCombinedSku());
-
-            // 拼接参数
-            params.put("imagesPerCollage", collageRequest.getImagesPerCollage());
-            params.put("layout", collageRequest.getLayout());
-            params.put("outputWidth", collageRequest.getOutputWidth());
-            params.put("outputHeight", collageRequest.getOutputHeight());
-            params.put("spacing", collageRequest.getSpacing());
-            params.put("minSpacing", collageRequest.getMinSpacing());
-            params.put("outerPadding", collageRequest.getOuterPadding());
-            params.put("productScale", collageRequest.getProductScale());
-            params.put("cropMargin", collageRequest.getCropMargin());
-            params.put("skipEmpty", collageRequest.getSkipEmpty());
-
-            // 标签设置
-            params.put("labelFormat", collageRequest.getLabelFormat());
-            params.put("labelFontSize", collageRequest.getLabelFontSize());
-            params.put("labelPosition", collageRequest.getLabelPosition());
-            params.put("labelMargin", collageRequest.getLabelMargin());
-            params.put("hidePcsOne", collageRequest.getHidePcsOne());
-
-            // 其他设置
-            params.put("useCache", collageRequest.getUseCache());
-            params.put("cacheSize", collageRequest.getCacheSize());
-            params.put("outputMode", collageRequest.getOutputMode());
-            params.put("filenamePrefix", collageRequest.getFilenamePrefix());
-            params.put("adaptiveDirection", collageRequest.getAdaptiveDirection());
+            // 设置最终的Excel文件到请求对象
+            collageRequest.setExcelFile(finalExcelFile);
 
             // 执行拼接
-            CollageResult result = comfyUIService.runCollage(finalExcelFile, params);
+            CollageResult result = comfyUIService.runCollage(collageRequest);
 
             if (result.isSuccess()) {
                 log.info("Excel产品拼接执行成功，生成 {} 张图片", result.getImageCount());

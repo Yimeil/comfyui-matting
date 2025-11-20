@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.yimeil.comfyui.config.ComfyUIConfig;
+import com.yimeil.comfyui.model.CollageRequest;
 import com.yimeil.comfyui.model.CollageResult;
+import com.yimeil.comfyui.model.KeywordMattingRequest;
 import com.yimeil.comfyui.model.MattingRequest;
 import com.yimeil.comfyui.model.MattingResult;
 import lombok.extern.slf4j.Slf4j;
@@ -356,60 +358,46 @@ public class ComfyUIService {
     /**
      * 执行关键字抠图
      *
-     * @param imageFile 图片文件
-     * @param request 基本请求参数（主要用于工作流名称）
-     * @param params 关键字抠图参数
+     * @param request 关键字抠图请求参数
      * @return 抠图结果
      */
-    public MattingResult runKeywordMatting(MultipartFile imageFile, MattingRequest request, Map<String, Object> params) {
+    public MattingResult runKeywordMatting(KeywordMattingRequest request) {
         MattingResult result = new MattingResult();
         long startTime = System.currentTimeMillis();
 
         try {
             // 1. 加载关键字抠图工作流
-            String workflowName = request.getWorkflowName() != null ?
-                    request.getWorkflowName() : "matting_keyword_api.json";
-            JsonNode workflow = loadWorkflowFromResource(workflowName);
+            JsonNode workflow = loadWorkflowFromResource("matting_keyword_api.json");
 
             // 2. 上传图片
-            String uploadedName = uploadImage(imageFile);
+            String uploadedName = uploadImage(request.getImage());
 
             // 3. 更新工作流参数 - 根据 matting_keyword_api.json 的节点结构
             // 节点 1: LoadImage - 加载图片
             workflow = updateWorkflowParams(workflow, "1", "image", uploadedName);
 
             // 节点 4: ArgosTranslateTextNode - 翻译关键字
-            String keyword = (String) params.get("keyword");
-            String translateFrom = (String) params.getOrDefault("translateFrom", "chinese");
-            log.info("关键字抠图 - 关键字: '{}', 翻译方向: {} -> english", keyword, translateFrom);
+            log.info("关键字抠图 - 关键字: '{}', 翻译方向: {} -> english",
+                    request.getKeyword(), request.getTranslateFrom());
 
-            workflow = updateWorkflowParams(workflow, "4", "from_translate", translateFrom);
+            workflow = updateWorkflowParams(workflow, "4", "from_translate", request.getTranslateFrom());
             workflow = updateWorkflowParams(workflow, "4", "to_translate", "english");
-            workflow = updateWorkflowParams(workflow, "4", "text", keyword);
+            workflow = updateWorkflowParams(workflow, "4", "text", request.getKeyword());
 
             // 节点 2: LayerMask: SegmentAnythingUltra V2 - SAM + Grounding DINO
-            String samModel = (String) params.getOrDefault("samModel", "sam_vit_h (2.56GB)");
-            String dinoModel = (String) params.getOrDefault("dinoModel", "GroundingDINO_SwinT_OGC (694MB)");
-            Double threshold = (Double) params.getOrDefault("threshold", 0.3);
-            log.info("关键字抠图 - SAM参数: model={}, dino={}, threshold={}", samModel, dinoModel, threshold);
-            String detailMethod = (String) params.getOrDefault("detailMethod", "VITMatte(local)");
-            Integer detailErode = (Integer) params.getOrDefault("detailErode", 6);
-            Integer detailDilate = (Integer) params.getOrDefault("detailDilate", 6);
-            Double blackPoint = (Double) params.getOrDefault("blackPoint", 0.15);
-            Double whitePoint = (Double) params.getOrDefault("whitePoint", 0.99);
-            Double maxMegapixels = (Double) params.getOrDefault("maxMegapixels", 2.0);
-            String device = (String) params.getOrDefault("device", "cuda");
+            log.info("关键字抠图 - SAM参数: model={}, dino={}, threshold={}",
+                    request.getSamModel(), request.getDinoModel(), request.getThreshold());
 
-            workflow = updateWorkflowParams(workflow, "2", "sam_model", samModel);
-            workflow = updateWorkflowParams(workflow, "2", "grounding_dino_model", dinoModel);
-            workflow = updateWorkflowParams(workflow, "2", "threshold", threshold);
-            workflow = updateWorkflowParams(workflow, "2", "detail_method", detailMethod);
-            workflow = updateWorkflowParams(workflow, "2", "detail_erode", detailErode);
-            workflow = updateWorkflowParams(workflow, "2", "detail_dilate", detailDilate);
-            workflow = updateWorkflowParams(workflow, "2", "black_point", blackPoint);
-            workflow = updateWorkflowParams(workflow, "2", "white_point", whitePoint);
-            workflow = updateWorkflowParams(workflow, "2", "max_megapixels", maxMegapixels);
-            workflow = updateWorkflowParams(workflow, "2", "device", device);
+            workflow = updateWorkflowParams(workflow, "2", "sam_model", request.getSamModel());
+            workflow = updateWorkflowParams(workflow, "2", "grounding_dino_model", request.getDinoModel());
+            workflow = updateWorkflowParams(workflow, "2", "threshold", request.getThreshold());
+            workflow = updateWorkflowParams(workflow, "2", "detail_method", request.getDetailMethod());
+            workflow = updateWorkflowParams(workflow, "2", "detail_erode", request.getDetailErode());
+            workflow = updateWorkflowParams(workflow, "2", "detail_dilate", request.getDetailDilate());
+            workflow = updateWorkflowParams(workflow, "2", "black_point", request.getBlackPoint());
+            workflow = updateWorkflowParams(workflow, "2", "white_point", request.getWhitePoint());
+            workflow = updateWorkflowParams(workflow, "2", "max_megapixels", request.getMaxMegapixels());
+            workflow = updateWorkflowParams(workflow, "2", "device", request.getDevice());
 
             // 4. 执行工作流
             log.info("runKeywordMatting - 准备提交工作流，节点数: {}",
@@ -467,59 +455,54 @@ public class ComfyUIService {
     /**
      * 执行Excel产品拼接
      *
-     * @param excelFile Excel文件
-     * @param params 拼接参数
+     * @param request 拼接请求参数
      * @return 拼接结果
      */
-    public CollageResult runCollage(MultipartFile excelFile, Map<String, Object> params) {
+    public CollageResult runCollage(CollageRequest request) {
         CollageResult result = new CollageResult();
         long startTime = System.currentTimeMillis();
 
         try {
             // 1. 加载拼接工作流
-            String workflowName = "collage-excel-v-api.json";
-            JsonNode workflow = loadWorkflowFromResource(workflowName);
+            JsonNode workflow = loadWorkflowFromResource("collage-excel-v-api.json");
 
             // 2. 上传Excel文件到ComfyUI
-            String uploadedExcelName = uploadFile(excelFile, "input");
+            String uploadedExcelName = uploadFile(request.getExcelFile(), "input");
 
             // 3. 更新工作流参数
             // 节点 34: ExcelSKULoader - 主要的Excel加载节点
             workflow = updateWorkflowParams(workflow, "34", "excel_file", uploadedExcelName);
-            workflow = updateWorkflowParams(workflow, "34", "sheet_name", params.get("sheetName"));
-            workflow = updateWorkflowParams(workflow, "34", "combined_sku_col", params.get("combinedSkuCol"));
-            workflow = updateWorkflowParams(workflow, "34", "sku_col", params.get("skuCol"));
-            workflow = updateWorkflowParams(workflow, "34", "pcs_col", params.get("pcsCol"));
-            workflow = updateWorkflowParams(workflow, "34", "url_col", params.get("urlCol"));
-            workflow = updateWorkflowParams(workflow, "34", "start_row", params.get("startRow"));
-            workflow = updateWorkflowParams(workflow, "34", "use_cache", params.get("useCache"));
-            workflow = updateWorkflowParams(workflow, "34", "cache_size", params.get("cacheSize"));
-            workflow = updateWorkflowParams(workflow, "34", "label_format", params.get("labelFormat"));
-            workflow = updateWorkflowParams(workflow, "34", "output_mode", params.get("outputMode"));
-            workflow = updateWorkflowParams(workflow, "34", "filename_prefix", params.get("filenamePrefix"));
-            workflow = updateWorkflowParams(workflow, "34", "filter_combined_sku", params.get("filterCombinedSku"));
+            workflow = updateWorkflowParams(workflow, "34", "sheet_name", request.getSheetName());
+            workflow = updateWorkflowParams(workflow, "34", "combined_sku_col", request.getCombinedSkuCol());
+            workflow = updateWorkflowParams(workflow, "34", "sku_col", request.getSkuCol());
+            workflow = updateWorkflowParams(workflow, "34", "pcs_col", request.getPcsCol());
+            workflow = updateWorkflowParams(workflow, "34", "url_col", request.getUrlCol());
+            workflow = updateWorkflowParams(workflow, "34", "start_row", request.getStartRow());
+            workflow = updateWorkflowParams(workflow, "34", "use_cache", request.getUseCache());
+            workflow = updateWorkflowParams(workflow, "34", "cache_size", request.getCacheSize());
+            workflow = updateWorkflowParams(workflow, "34", "label_format", request.getLabelFormat());
+            workflow = updateWorkflowParams(workflow, "34", "output_mode", request.getOutputMode());
+            workflow = updateWorkflowParams(workflow, "34", "filename_prefix", request.getFilenamePrefix());
+            workflow = updateWorkflowParams(workflow, "34", "filter_combined_sku", request.getFilterCombinedSku());
 
             // 节点 12: SmartProductCollageBatch - 拼接节点
-            workflow = updateWorkflowParams(workflow, "12", "images_per_collage", params.get("imagesPerCollage"));
-            workflow = updateWorkflowParams(workflow, "12", "layout", params.get("layout"));
-            workflow = updateWorkflowParams(workflow, "12", "output_width", params.get("outputWidth"));
-            workflow = updateWorkflowParams(workflow, "12", "output_height", params.get("outputHeight"));
-            workflow = updateWorkflowParams(workflow, "12", "spacing", params.get("spacing"));
-            workflow = updateWorkflowParams(workflow, "12", "min_spacing", params.get("minSpacing"));
-            workflow = updateWorkflowParams(workflow, "12", "outer_padding", params.get("outerPadding"));
+            workflow = updateWorkflowParams(workflow, "12", "images_per_collage", request.getImagesPerCollage());
+            workflow = updateWorkflowParams(workflow, "12", "layout", request.getLayout());
+            workflow = updateWorkflowParams(workflow, "12", "output_width", request.getOutputWidth());
+            workflow = updateWorkflowParams(workflow, "12", "output_height", request.getOutputHeight());
+            workflow = updateWorkflowParams(workflow, "12", "spacing", request.getSpacing());
+            workflow = updateWorkflowParams(workflow, "12", "min_spacing", request.getMinSpacing());
+            workflow = updateWorkflowParams(workflow, "12", "outer_padding", request.getOuterPadding());
             // productScale: 前端传百分比(10-100)，需要转换为比例值(0.1-1.0)
-            Object productScaleObj = params.get("productScale");
-            if (productScaleObj instanceof Number) {
-                double productScale = ((Number) productScaleObj).doubleValue() / 100.0;
-                workflow = updateWorkflowParams(workflow, "12", "product_scale", productScale);
-            }
-            workflow = updateWorkflowParams(workflow, "12", "crop_margin", params.get("cropMargin"));
-            workflow = updateWorkflowParams(workflow, "12", "skip_empty", params.get("skipEmpty"));
-            workflow = updateWorkflowParams(workflow, "12", "label_font_size", params.get("labelFontSize"));
-            workflow = updateWorkflowParams(workflow, "12", "label_position", params.get("labelPosition"));
-            workflow = updateWorkflowParams(workflow, "12", "label_margin", params.get("labelMargin"));
-            workflow = updateWorkflowParams(workflow, "12", "hide_pcs_one", params.get("hidePcsOne"));
-            workflow = updateWorkflowParams(workflow, "12", "adaptive_direction", params.get("adaptiveDirection"));
+            double productScale = request.getProductScale() / 100.0;
+            workflow = updateWorkflowParams(workflow, "12", "product_scale", productScale);
+            workflow = updateWorkflowParams(workflow, "12", "crop_margin", request.getCropMargin());
+            workflow = updateWorkflowParams(workflow, "12", "skip_empty", request.getSkipEmpty());
+            workflow = updateWorkflowParams(workflow, "12", "label_font_size", request.getLabelFontSize());
+            workflow = updateWorkflowParams(workflow, "12", "label_position", request.getLabelPosition());
+            workflow = updateWorkflowParams(workflow, "12", "label_margin", request.getLabelMargin());
+            workflow = updateWorkflowParams(workflow, "12", "hide_pcs_one", request.getHidePcsOne());
+            workflow = updateWorkflowParams(workflow, "12", "adaptive_direction", request.getAdaptiveDirection());
 
             // 4. 执行工作流
             log.info("runCollage - 准备提交工作流");

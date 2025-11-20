@@ -9,9 +9,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.Map;
-
 /**
  * 抠图 API 控制器
  */
@@ -50,32 +47,13 @@ public class MattingController {
      * 执行关键字抠图
      */
     @PostMapping("/keyword")
-    public ApiResponse<MattingResult> executeKeywordMatting(@ModelAttribute KeywordMattingRequest keywordRequest) {
+    public ApiResponse<MattingResult> executeKeywordMatting(@ModelAttribute KeywordMattingRequest request) {
         try {
             log.info("收到关键字抠图请求: {}, 关键字: {}",
-                    keywordRequest.getImage().getOriginalFilename(), keywordRequest.getKeyword());
-
-            // 构建参数 Map
-            Map<String, Object> params = new HashMap<>();
-            params.put("keyword", keywordRequest.getKeyword());
-            params.put("translateFrom", keywordRequest.getTranslateFrom());
-            params.put("samModel", keywordRequest.getSamModel());
-            params.put("dinoModel", keywordRequest.getDinoModel());
-            params.put("threshold", keywordRequest.getThreshold());
-            params.put("detailMethod", keywordRequest.getDetailMethod());
-            params.put("detailErode", keywordRequest.getDetailErode());
-            params.put("detailDilate", keywordRequest.getDetailDilate());
-            params.put("blackPoint", keywordRequest.getBlackPoint());
-            params.put("whitePoint", keywordRequest.getWhitePoint());
-            params.put("maxMegapixels", keywordRequest.getMaxMegapixels());
-            params.put("device", keywordRequest.getDevice());
-
-            // 构建请求
-            MattingRequest request = new MattingRequest();
-            request.setWorkflowName("matting_keyword_api.json");
+                    request.getImage().getOriginalFilename(), request.getKeyword());
 
             // 执行关键字抠图
-            MattingResult result = comfyUIService.runKeywordMatting(keywordRequest.getImage(), request, params);
+            MattingResult result = comfyUIService.runKeywordMatting(request);
 
             if (result.isSuccess()) {
                 log.info("关键字抠图执行成功: {}", result.getOutputFilename());
