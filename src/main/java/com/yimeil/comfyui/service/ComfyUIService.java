@@ -489,8 +489,9 @@ public class ComfyUIService {
             // 1. 加载拼接工作流
             JsonNode workflow = loadWorkflowFromResource("collage-excel-v-api.json");
 
-            // 2. 上传Excel文件到ComfyUI
-            String uploadedExcelName = uploadFile(request.getExcelFile(), "input");
+            // 2. 上传Excel文件到ComfyUI（不指定subfolder，直接上传到input根目录）
+            String uploadedExcelName = uploadFile(request.getExcelFile(), null);
+            log.info("Excel文件上传完成，返回文件名: {}", uploadedExcelName);
 
             // 3. 更新工作流参数
             // 节点 34: ExcelSKULoader - 主要的Excel加载节点
@@ -848,10 +849,13 @@ public class ComfyUIService {
 
             try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
                 String responseBody = EntityUtils.toString(response.getEntity(), "UTF-8");
+                log.info("文件上传响应: {}", responseBody);
+
                 JsonNode jsonNode = objectMapper.readTree(responseBody);
                 String uploadedName = jsonNode.get("name").asText();
+                String uploadedSubfolder = jsonNode.has("subfolder") ? jsonNode.get("subfolder").asText() : "";
 
-                log.info("文件上传成功: {}", uploadedName);
+                log.info("文件上传成功: name={}, subfolder={}", uploadedName, uploadedSubfolder);
                 return uploadedName;
             }
         }
