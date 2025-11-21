@@ -621,6 +621,9 @@
                     </div>
                 </div>
                 <div class="button-group" style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="downloadResult()">
+                        📥 下载图片
+                    </button>
                     <button class="btn btn-primary" onclick="viewResult()">
                         🔗 查看原图
                     </button>
@@ -796,6 +799,21 @@
         function newMatting() {
             document.getElementById('resultSection').classList.remove('show');
             resetForm();
+        }
+
+        function downloadResult() {
+            if (!resultRemoteUrl || !resultFilename) {
+                alert('没有可下载的图片');
+                return;
+            }
+
+            const proxyUrl = `/api/matting/download?url=${encodeURIComponent(resultRemoteUrl)}&filename=${encodeURIComponent(resultFilename)}`;
+            const a = document.createElement('a');
+            a.href = proxyUrl;
+            a.download = resultFilename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         }
     </script>
 </body>

@@ -411,13 +411,19 @@
                             <p><strong>执行时间:</strong> {{ result.executionTime }}ms</p>
                             <p style="margin-bottom: 0;"><strong>Prompt ID:</strong> {{ result.promptId }}</p>
                         </div>
+                        <div style="margin-bottom: 15px; text-align: center;">
+                            <button class="btn btn-primary" @click="downloadAllImages" style="padding: 8px 20px; font-size: 0.9rem;">
+                                📥 批量下载全部图片
+                            </button>
+                        </div>
                         <div class="result-images" style="max-height: 400px; overflow-y: auto;">
                             <div v-for="(image, index) in result.images" :key="index" class="result-image-item">
                                 <img :src="image.remoteUrl" :alt="image.filename">
                                 <div class="image-info">
                                     {{ image.filename }}
-                                    <div style="margin-top: 5px;">
+                                    <div style="margin-top: 5px; display: flex; gap: 10px; justify-content: center;">
                                         <a :href="image.remoteUrl" target="_blank" style="color: #667eea; font-size: 0.75rem;">查看原图</a>
+                                        <a href="javascript:void(0)" @click="downloadImage(image)" style="color: #28a745; font-size: 0.75rem;">下载</a>
                                     </div>
                                 </div>
                             </div>
@@ -696,6 +702,36 @@
                         this.errorMessage = error.response?.data?.message || error.message || '网络错误';
                     } finally {
                         this.processing = false;
+                    }
+                },
+                downloadImage(image) {
+                    try {
+                        const proxyUrl = `/api/matting/download?url=${encodeURIComponent(image.remoteUrl)}&filename=${encodeURIComponent(image.filename)}`;
+                        const a = document.createElement('a');
+                        a.href = proxyUrl;
+                        a.download = image.filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    } catch (error) {
+                        console.error('下载图片失败:', error);
+                        alert('下载失败: ' + error.message);
+                    }
+                },
+                async downloadAllImages() {
+                    if (!this.result || !this.result.images || this.result.images.length === 0) {
+                        alert('没有可下载的图片');
+                        return;
+                    }
+
+                    for (let i = 0; i < this.result.images.length; i++) {
+                        const image = this.result.images[i];
+                        try {
+                            this.downloadImage(image);
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                        } catch (error) {
+                            console.error(`下载第 ${i + 1} 张图片失败:`, error);
+                        }
                     }
                 }
             }

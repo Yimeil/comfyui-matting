@@ -142,21 +142,22 @@ public class MattingController {
     @GetMapping("/download")
     public void downloadImage(@RequestParam String url,
                               @RequestParam String filename, HttpServletResponse response) {
+        java.io.InputStream inputStream = null;
+        java.net.HttpURLConnection connection = null;
+
         try {
             log.info("代理下载图片: url={}, filename={}", url, filename);
 
-            // 从 ComfyUI 服务器下载图片
-            org.apache.hc.client5.http.impl.classic.CloseableHttpClient httpClient =
-                    org.apache.hc.client5.http.impl.classic.HttpClients.createDefault();
-            org.apache.hc.client5.http.classic.methods.HttpGet httpGet =
-                    new org.apache.hc.client5.http.classic.methods.HttpGet(url);
+            // 使用 java.net.URL 来处理 URL（更宽松的 URL 解析）
+            java.net.URL imageUrl = new java.net.URL(url);
+            connection = (java.net.HttpURLConnection) imageUrl.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(30000);
 
-            org.apache.hc.client5.http.impl.classic.CloseableHttpResponse httpResponse =
-                    httpClient.execute(httpGet);
-
-            // 获取图片数据
-            byte[] imageBytes = org.apache.hc.core5.http.io.entity.EntityUtils.toByteArray(
-                    httpResponse.getEntity());
+            // 读取图片数据
+            inputStream = connection.getInputStream();
+            byte[] imageBytes = inputStream.readAllBytes();
 
             // 设置响应头，处理中文文件名编码
             response.setContentType("application/octet-stream");
@@ -170,14 +171,24 @@ public class MattingController {
             response.getOutputStream().write(imageBytes);
             response.getOutputStream().flush();
 
-            httpResponse.close();
-            httpClient.close();
-
             log.info("图片下载成功: {}", filename);
 
         } catch (Exception e) {
             log.error("代理下载图片失败", e);
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            try {
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            } catch (Exception ignored) {
+            }
+        } finally {
+            // 关闭资源
+            try {
+                if (inputStream != null) inputStream.close();
+            } catch (Exception ignored) {
+            }
+            try {
+                if (connection != null) connection.disconnect();
+            } catch (Exception ignored) {
+            }
         }
     }
 }

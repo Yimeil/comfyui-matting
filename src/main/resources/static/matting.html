@@ -804,6 +804,11 @@
                         <strong>图片URL:</strong>
                         <a :href="result.remoteUrl" target="_blank" style="color: #667eea; word-break: break-all;">{{ result.remoteUrl }}</a>
                     </p>
+                    <p style="margin-top: 15px;">
+                        <button @click="downloadResult" style="padding: 10px 25px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.95rem;">
+                            📥 下载图片
+                        </button>
+                    </p>
                 </div>
             </div>
         </div>
@@ -1319,6 +1324,20 @@
                     } finally {
                         this.processing = false;
                     }
+                },
+                downloadResult() {
+                    if (!this.result || !this.result.remoteUrl || !this.result.outputFilename) {
+                        alert('没有可下载的图片');
+                        return;
+                    }
+
+                    const proxyUrl = `/api/matting/download?url=${encodeURIComponent(this.result.remoteUrl)}&filename=${encodeURIComponent(this.result.outputFilename)}`;
+                    const a = document.createElement('a');
+                    a.href = proxyUrl;
+                    a.download = this.result.outputFilename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
                 }
             }
         }).mount('#app');
