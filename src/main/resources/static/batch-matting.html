@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BiRefNet 批量抠图</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        #app {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .main-layout {
+            display: flex;
+            gap: 30px;
+        }
+
+        .left-panel {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .right-panel {
+            width: 350px;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 1000px) {
+            .main-layout {
+                flex-direction: column;
+            }
+            .right-panel {
+                width: 100%;
+            }
+        }
+
+        .form-section {
+            margin-bottom: 25px;
+        }
+
+        .form-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.1rem;
+            border-bottom: 2px solid #11998e;
+            padding-bottom: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #555;
+            font-size: 0.9rem;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #11998e;
+        }
+
+        .form-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .param-value {
+            color: #11998e;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+
+        .file-upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 10px;
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #fafafa;
+        }
+
+        .file-upload-area:hover {
+            border-color: #11998e;
+            background: #f0fff4;
+        }
+
+        .file-upload-area.has-file {
+            border-color: #28a745;
+            background: #f0fff4;
+        }
+
+        .file-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e8f5e9;
+            border-radius: 8px;
+            color: #2e7d32;
+            font-size: 0.9rem;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(17, 153, 142, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress {
+            margin-top: 20px;
+            padding: 20px;
+            background: #e8f5e9;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #11998e;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .result-section {
+            margin-top: 20px;
+        }
+
+        .result-images {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .result-image-item {
+            border: 2px solid #eee;
+            border-radius: 10px;
+            overflow: hidden;
+            background: white;
+        }
+
+        .result-image-item img {
+            width: 100%;
+            display: block;
+        }
+
+        .result-image-item .image-info {
+            padding: 10px;
+            font-size: 0.85rem;
+            color: #666;
+            border-top: 1px solid #eee;
+        }
+
+        .result-info {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+
+        .result-info p {
+            margin-bottom: 8px;
+            color: #555;
+            font-size: 0.9rem;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 15px;
+            color: white;
+            text-decoration: none;
+            font-size: 0.95rem;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .path-input-area {
+            border: 3px dashed #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            background: #fafafa;
+            transition: all 0.3s;
+        }
+
+        .path-input-area:focus-within {
+            border-color: #11998e;
+            background: #f0fff4;
+        }
+
+        .path-hint {
+            font-size: 0.8rem;
+            color: #999;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <a href="index.html" class="back-link">← 返回首页</a>
+
+        <div class="header">
+            <h1>🖼️ BiRefNet 批量抠图工具</h1>
+            <p style="opacity: 0.9;">高精度AI抠图，支持单张图片、HTTP地址、压缩包三种输入模式</p>
+        </div>
+
+        <div class="card">
+            <div class="main-layout">
+                <!-- 左侧：输入配置 -->
+                <div class="left-panel">
+                    <!-- 输入模式选择 -->
+                    <div class="form-section">
+                        <h3>📁 输入配置</h3>
+
+                        <!-- 模式切换 -->
+                        <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                                <input type="radio" v-model="inputMode" value="image" style="width: 16px; height: 16px;">
+                                <span>📷 单张图片</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                                <input type="radio" v-model="inputMode" value="urls" style="width: 16px; height: 16px;">
+                                <span>🔗 HTTP地址</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                                <input type="radio" v-model="inputMode" value="zip" style="width: 16px; height: 16px;">
+                                <span>📦 压缩文件</span>
+                            </label>
+                        </div>
+
+                        <!-- 图片上传模式 -->
+                        <div v-if="inputMode === 'image'">
+                            <div
+                                class="file-upload-area"
+                                :class="{ 'has-file': imageFile }"
+                                @click="triggerImageInput"
+                                @dragover.prevent
+                                @drop.prevent="handleImageDrop">
+                                <div v-if="!imageFile">
+                                    <p style="font-size: 1.1rem; color: #666; margin-bottom: 8px;">
+                                        📷 点击或拖拽上传图片
+                                    </p>
+                                    <p style="font-size: 0.85rem; color: #999;">
+                                        支持 jpg, png, webp 等格式
+                                    </p>
+                                </div>
+                                <div v-else class="file-info">
+                                    ✅ {{ imageFile.name }} ({{ formatFileSize(imageFile.size) }})
+                                </div>
+                            </div>
+                            <input
+                                type="file"
+                                ref="imageInput"
+                                @change="handleImageSelect"
+                                accept="image/*"
+                                style="display: none;">
+                        </div>
+
+                        <!-- URL模式 -->
+                        <div v-if="inputMode === 'urls'" class="path-input-area">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>HTTP图片地址（每行一个）</label>
+                                <textarea
+                                    v-model="params.imageUrls"
+                                    rows="6"
+                                    placeholder="http://example.com/image1.jpg&#10;http://example.com/image2.jpg&#10;http://example.com/image3.jpg"
+                                    style="width: 100%; padding: 10px 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 0.95rem; font-family: monospace; resize: vertical;"></textarea>
+                                <p class="path-hint">
+                                    每行输入一个图片URL地址，支持批量处理
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- ZIP模式 -->
+                        <div v-if="inputMode === 'zip'">
+                            <div
+                                class="file-upload-area"
+                                :class="{ 'has-file': zipFile }"
+                                @click="triggerZipInput"
+                                @dragover.prevent
+                                @drop.prevent="handleZipDrop">
+                                <div v-if="!zipFile">
+                                    <p style="font-size: 1.1rem; color: #666; margin-bottom: 8px;">
+                                        📦 点击或拖拽上传压缩文件
+                                    </p>
+                                    <p style="font-size: 0.85rem; color: #999;">
+                                        支持 .zip 格式
+                                    </p>
+                                </div>
+                                <div v-else class="file-info">
+                                    ✅ {{ zipFile.name }} ({{ formatFileSize(zipFile.size) }})
+                                </div>
+                            </div>
+                            <input
+                                type="file"
+                                ref="zipInput"
+                                @change="handleZipSelect"
+                                accept=".zip"
+                                style="display: none;">
+                        </div>
+                    </div>
+
+                    <!-- 图片预览 -->
+                    <div class="form-section" v-if="previewImages.length > 0">
+                        <h3>👁️ 图片预览</h3>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                            <div v-for="(preview, index) in previewImages" :key="index"
+                                 style="width: 100px; height: 100px; border: 2px solid #ddd; border-radius: 8px; overflow: hidden; background: #f5f5f5;">
+                                <img :src="preview" style="width: 100%; height: 100%; object-fit: cover;" :alt="'预览图 ' + (index + 1)">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 输出设置 -->
+                    <div class="form-section">
+                        <h3>📥 输出设置</h3>
+                        <div class="form-group">
+                            <label>文件名前缀</label>
+                            <input type="text" v-model="params.filenamePrefix" placeholder="%date:yyyy-MM-dd%/first-matting/img">
+                            <p class="path-hint">
+                                输出文件将保存到ComfyUI的output目录
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button
+                            class="btn btn-primary"
+                            @click="executeBatchMatting"
+                            :disabled="!canExecute || processing">
+                            {{ processing ? '处理中...' : '🚀 开始批量抠图' }}
+                        </button>
+                    </div>
+
+                    <!-- 进度显示 -->
+                    <div v-if="processing" class="progress">
+                        <div class="spinner"></div>
+                        <p>{{ progressMessage }}</p>
+                    </div>
+
+                    <!-- 错误显示 -->
+                    <div v-if="errorMessage" class="error">
+                        {{ errorMessage }}
+                    </div>
+
+                    <!-- 结果显示 -->
+                    <div v-if="result" class="result-section">
+                        <h3 style="color: #28a745; font-size: 1.1rem;">✅ 抠图完成</h3>
+                        <div class="result-info" style="margin-bottom: 15px;">
+                            <p><strong>处理图片数:</strong> {{ result.imageCount }}</p>
+                            <p><strong>执行时间:</strong> {{ (result.executionTime / 1000).toFixed(1) }}秒</p>
+                            <p style="margin-bottom: 0;"><strong>Prompt ID:</strong> {{ result.promptId }}</p>
+                        </div>
+                        <div style="margin-bottom: 15px; text-align: center;">
+                            <button class="btn btn-primary" @click="downloadAllImages" style="padding: 8px 20px; font-size: 0.9rem;">
+                                📥 批量下载全部图片
+                            </button>
+                        </div>
+                        <div class="result-images" style="max-height: 500px; overflow-y: auto;">
+                            <div v-for="(image, index) in result.images" :key="index" class="result-image-item">
+                                <img :src="image.remoteUrl" :alt="image.filename">
+                                <div class="image-info">
+                                    {{ image.filename }}
+                                    <div style="margin-top: 5px; display: flex; gap: 10px; justify-content: center;">
+                                        <a :href="image.remoteUrl" target="_blank" style="color: #11998e; font-size: 0.75rem;">查看原图</a>
+                                        <a href="javascript:void(0)" @click="downloadImage(image)" style="color: #28a745; font-size: 0.75rem;">下载</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧：抠图参数 -->
+                <div class="right-panel">
+                    <!-- 模型配置 -->
+                    <div class="form-section">
+                        <h3>🤖 模型配置</h3>
+
+                        <div class="form-group">
+                            <label>BiRefNet模型版本</label>
+                            <select v-model="params.modelVersion">
+                                <option value="BiRefNet-DIS5K">BiRefNet-DIS5K (推荐)</option>
+                                <option value="BiRefNet-DIS5K_fp16">BiRefNet-DIS5K_fp16</option>
+                                <option value="BiRefNet-general">BiRefNet-general</option>
+                                <option value="BiRefNet-general-lite">BiRefNet-general-lite</option>
+                                <option value="BiRefNet-portrait">BiRefNet-portrait</option>
+                                <option value="BiRefNet-matting">BiRefNet-matting</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>设备</label>
+                            <select v-model="params.device">
+                                <option value="auto">自动</option>
+                                <option value="cuda">CUDA (GPU)</option>
+                                <option value="cpu">CPU</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" v-model="params.useRefine">
+                                使用精细化处理
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 图像处理 -->
+                    <div class="form-section">
+                        <h3>🎨 图像处理</h3>
+
+                        <div class="form-group">
+                            <label>处理高度 <span class="param-value">{{ params.processHeight }}px</span></label>
+                            <input type="range" v-model.number="params.processHeight" min="512" max="2048" step="64">
+                        </div>
+
+                        <div class="form-group">
+                            <label>背景颜色</label>
+                            <select v-model="params.backgroundColor">
+                                <option value="transparency">透明</option>
+                                <option value="white">白色</option>
+                                <option value="black">黑色</option>
+                                <option value="green">绿色</option>
+                                <option value="blue">蓝色</option>
+                                <option value="red">红色</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 蒙版处理 -->
+                    <div class="form-section">
+                        <h3>✂️ 蒙版处理</h3>
+
+                        <div class="form-group">
+                            <label>蒙版扩展 <span class="param-value">{{ params.maskExpand }}px</span></label>
+                            <input type="range" v-model.number="params.maskExpand" min="-20" max="20" step="1">
+                            <p class="path-hint">负值收缩边缘，正值扩展边缘</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label>模糊半径 <span class="param-value">{{ params.blurRadius }}px</span></label>
+                            <input type="range" v-model.number="params.blurRadius" min="0" max="20" step="0.5">
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" v-model="params.taperedCorners">
+                                锥形边角
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" v-model="params.fillHoles">
+                                填充孔洞
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 放大配置 -->
+                    <div class="form-section">
+                        <h3>🔍 放大配置</h3>
+
+                        <div class="form-group">
+                            <label>放大模型</label>
+                            <select v-model="params.upscaleModel">
+                                <option value="4x-UltraSharp.pth">4x-UltraSharp (推荐)</option>
+                                <option value="4x_NMKD-Siax_200k.pth">4x_NMKD-Siax</option>
+                                <option value="RealESRGAN_x4plus.pth">RealESRGAN_x4plus</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; color: white; margin-top: 30px; opacity: 0.8;">
+            <p>Powered by Vue 3 + Spring Boot + ComfyUI + BiRefNet</p>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    inputMode: 'image',
+                    imageFile: null,
+                    zipFile: null,
+                    previewImages: [],  // 预览图片数组
+                    processing: false,
+                    progressMessage: '',
+                    errorMessage: null,
+                    result: null,
+                    params: {
+                        // 输入配置
+                        imageUrls: '',
+
+                        // 模型配置
+                        modelVersion: 'BiRefNet-DIS5K',
+                        device: 'auto',
+                        useRefine: true,
+
+                        // 图像处理
+                        processHeight: 1024,
+                        backgroundColor: 'transparency',
+
+                        // 蒙版处理
+                        maskExpand: 5,
+                        blurRadius: 1.5,
+                        taperedCorners: true,
+                        fillHoles: false,
+                        lerpAlpha: 1.0,
+                        decayFactor: 1.0,
+
+                        // 放大配置
+                        upscaleModel: '4x-UltraSharp.pth',
+
+                        // 输出配置
+                        filenamePrefix: '%date:yyyy-MM-dd%/first-matting/img'
+                    }
+                };
+            },
+            computed: {
+                canExecute() {
+                    if (this.inputMode === 'image') {
+                        return this.imageFile !== null;
+                    } else if (this.inputMode === 'urls') {
+                        return this.params.imageUrls && this.params.imageUrls.trim();
+                    } else if (this.inputMode === 'zip') {
+                        return this.zipFile !== null;
+                    }
+                    return false;
+                }
+            },
+            watch: {
+                'params.imageUrls'(newUrls) {
+                    if (this.inputMode === 'urls' && newUrls) {
+                        this.updateUrlPreviews(newUrls);
+                    }
+                },
+                inputMode(newMode) {
+                    // 切换模式时清空预览
+                    this.previewImages = [];
+                }
+            },
+            methods: {
+                triggerImageInput() {
+                    this.$refs.imageInput.click();
+                },
+                handleImageSelect(event) {
+                    const file = event.target.files[0];
+                    if (file && file.type.startsWith('image/')) {
+                        this.imageFile = file;
+                        this.result = null;
+                        this.errorMessage = null;
+                        this.generateImagePreview(file);
+                    }
+                },
+                handleImageDrop(event) {
+                    const file = event.dataTransfer.files[0];
+                    if (file && file.type.startsWith('image/')) {
+                        this.imageFile = file;
+                        this.result = null;
+                        this.errorMessage = null;
+                        this.generateImagePreview(file);
+                    }
+                },
+                generateImagePreview(file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.previewImages = [e.target.result];
+                    };
+                    reader.readAsDataURL(file);
+                },
+                triggerZipInput() {
+                    this.$refs.zipInput.click();
+                },
+                handleZipSelect(event) {
+                    const file = event.target.files[0];
+                    if (file && file.name.endsWith('.zip')) {
+                        this.zipFile = file;
+                        this.result = null;
+                        this.errorMessage = null;
+                    }
+                },
+                handleZipDrop(event) {
+                    const file = event.dataTransfer.files[0];
+                    if (file && file.name.endsWith('.zip')) {
+                        this.zipFile = file;
+                        this.result = null;
+                        this.errorMessage = null;
+                    }
+                },
+                formatFileSize(bytes) {
+                    if (bytes < 1024) return bytes + ' B';
+                    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+                },
+                updateUrlPreviews(urlText) {
+                    // 解析URL列表
+                    const urls = urlText.split('\n')
+                        .map(url => url.trim())
+                        .filter(url => url && (url.startsWith('http://') || url.startsWith('https://')));
+
+                    // 只保留前10个URL的预览，避免太多
+                    this.previewImages = urls.slice(0, 10);
+                },
+                async downloadImage(image) {
+                    try {
+                        // 尝试通过后端代理下载
+                        const proxyUrl = `/api/matting/download?url=${encodeURIComponent(image.remoteUrl)}&filename=${encodeURIComponent(image.filename)}`;
+
+                        const a = document.createElement('a');
+                        a.href = proxyUrl;
+                        a.download = image.filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    } catch (error) {
+                        console.error('下载图片失败:', error);
+                        alert('下载失败: ' + error.message);
+                    }
+                },
+                async downloadAllImages() {
+                    if (!this.result || !this.result.images || this.result.images.length === 0) {
+                        alert('没有可下载的图片');
+                        return;
+                    }
+
+                    // 批量下载（通过后端代理，无需延迟）
+                    for (let i = 0; i < this.result.images.length; i++) {
+                        const image = this.result.images[i];
+                        try {
+                            this.downloadImage(image);
+                            // 小延迟避免浏览器同时触发太多下载
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                        } catch (error) {
+                            console.error(`下载第 ${i + 1} 张图片失败:`, error);
+                        }
+                    }
+                },
+                async executeBatchMatting() {
+                    // 验证输入
+                    if (!this.canExecute) {
+                        this.errorMessage = '请先完成输入配置';
+                        return;
+                    }
+
+                    this.processing = true;
+                    this.errorMessage = null;
+                    this.result = null;
+                    this.progressMessage = '正在加载模型和处理图片...';
+
+                    try {
+                        const formData = new FormData();
+
+                        // 输入模式
+                        formData.append('inputMode', this.inputMode);
+
+                        // 根据模式添加不同的输入参数
+                        if (this.inputMode === 'image') {
+                            formData.append('imageFile', this.imageFile);
+                        } else if (this.inputMode === 'urls') {
+                            formData.append('imageUrls', this.params.imageUrls.trim());
+                        } else if (this.inputMode === 'zip') {
+                            formData.append('zipFile', this.zipFile);
+                        }
+
+                        // 模型配置
+                        formData.append('modelVersion', this.params.modelVersion);
+                        formData.append('device', this.params.device);
+                        formData.append('useRefine', this.params.useRefine);
+
+                        // 图像处理
+                        formData.append('processHeight', this.params.processHeight);
+                        formData.append('backgroundColor', this.params.backgroundColor);
+
+                        // 蒙版处理
+                        formData.append('maskExpand', this.params.maskExpand);
+                        formData.append('blurRadius', this.params.blurRadius);
+                        formData.append('taperedCorners', this.params.taperedCorners);
+                        formData.append('fillHoles', this.params.fillHoles);
+                        formData.append('lerpAlpha', this.params.lerpAlpha);
+                        formData.append('decayFactor', this.params.decayFactor);
+
+                        // 放大配置
+                        formData.append('upscaleModel', this.params.upscaleModel);
+
+                        // 输出配置
+                        formData.append('filenamePrefix', this.params.filenamePrefix);
+
+                        this.progressMessage = '正在执行批量抠图，请耐心等待...';
+
+                        const response = await axios.post('/api/matting/batch', formData, {
+                            headers: {
+                                'Content-Type': 'multipart/form-data'
+                            }
+                        });
+
+                        if (response.data.code === 200) {
+                            this.result = response.data.data;
+                            this.progressMessage = '抠图完成！';
+                        } else {
+                            this.errorMessage = response.data.message || '抠图失败';
+                        }
+                    } catch (error) {
+                        console.error('批量抠图失败:', error);
+                        this.errorMessage = error.response?.data?.message || error.message || '网络错误';
+                    } finally {
+                        this.processing = false;
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

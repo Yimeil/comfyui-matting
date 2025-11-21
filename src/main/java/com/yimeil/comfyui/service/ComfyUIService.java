@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.yimeil.comfyui.config.ComfyUIConfig;
+import com.yimeil.comfyui.model.BatchMattingRequest;
+import com.yimeil.comfyui.model.BatchMattingResult;
 import com.yimeil.comfyui.model.CollageRequest;
 import com.yimeil.comfyui.model.CollageResult;
 import com.yimeil.comfyui.model.KeywordMattingRequest;
@@ -221,6 +223,27 @@ public class ComfyUIService {
                         log.info("工作流执行完成");
                         JsonNode promptData = history.get(promptId);
                         log.info("完整的 Prompt 数据: {}", objectMapper.writeValueAsString(promptData));
+
+                        // 检查是否有执行错误
+                        if (promptData.has("status")) {
+                            JsonNode status = promptData.get("status");
+                            if (status.has("status_str")) {
+                                String statusStr = status.get("status_str").asText();
+                                log.info("工作流执行状态: {}", statusStr);
+                            }
+                            if (status.has("completed") && status.get("completed").asBoolean() == false) {
+                                log.error("工作流未完成");
+                            }
+                        }
+
+                        // 检查执行错误信息
+                        if (promptData.has("outputs") && promptData.get("outputs").isObject() &&
+                            promptData.get("outputs").size() == 0 && promptData.has("status")) {
+                            JsonNode status = promptData.get("status");
+                            if (status.has("messages")) {
+                                log.error("执行消息: {}", objectMapper.writeValueAsString(status.get("messages")));
+                            }
+                        }
 
                         JsonNode outputs = promptData.get("outputs");
                         log.info("输出节点数据: {}", objectMapper.writeValueAsString(outputs));
@@ -555,6 +578,242 @@ public class ComfyUIService {
 
         } catch (Exception e) {
             log.error("Excel产品拼接失败", e);
+            result.setSuccess(false);
+            result.setErrorMessage(e.getMessage());
+        }
+
+        result.setExecutionTime(System.currentTimeMillis() - startTime);
+        return result;
+    }
+
+    /**
+     * 执行BiRefNet批量抠图
+     *
+     * @param request 批量抠图请求参数
+     * @return 批量抠图结果
+     */
+    public BatchMattingResult runBatchMatting(BatchMattingRequest request) {
+        BatchMattingResult result = new BatchMattingResult();
+        long startTime = System.currentTimeMillis();
+
+        try {
+            String inputMode = request.getInputMode() != null ? request.getInputMode() : "image";
+            JsonNode workflow;
+            String uploadedFileName = null;
+
+            // 1. 根据输入模式加载不同的工作流
+            switch (inputMode) {
+                case "urls":
+                    // HTTP地址列表模式 - 使用 matting_img_from_url_api.json
+                    workflow = loadWorkflowFromResource("matting_img_from_url_api.json");
+                    log.info("runBatchMatting - 使用URL模式，工作流: matting_img_from_url_api.json");
+                    break;
+
+                case "zip":
+                    // 压缩文件上传模式 - 使用 zip-birefnet-matting-api.json
+                    workflow = loadWorkflowFromResource("zip-birefnet-matting-api.json");
+                    log.info("runBatchMatting - 使用ZIP模式，工作流: zip-birefnet-matting-api.json");
+
+                    // 上传压缩文件
+                    if (request.getZipFile() != null && !request.getZipFile().isEmpty()) {
+                        uploadedFileName = uploadFile(request.getZipFile(), "input");
+                        log.info("压缩文件上传成功: {}", uploadedFileName);
+                    } else {
+                        throw new IOException("ZIP模式下未提供压缩文件");
+                    }
+                    break;
+
+                case "image":
+                default:
+                    // 单张图片上传模式 - 使用 batch_matting_api.json
+                    workflow = loadWorkflowFromResource("batch_matting_api.json");
+                    log.info("runBatchMatting - 使用图片上传模式，工作流: batch_matting_api.json");
+
+                    // 上传图片文件
+                    if (request.getImageFile() != null && !request.getImageFile().isEmpty()) {
+                        uploadedFileName = uploadImage(request.getImageFile());
+                        log.info("图片上传成功: {}", uploadedFileName);
+                    } else {
+                        throw new IOException("图片上传模式下未提供图片文件");
+                    }
+                    break;
+            }
+
+            // 2. 根据模式更新不同的输入参数
+            if ("urls".equals(inputMode)) {
+                // URL模式 - 节点 17: LoadImageFromUrl
+                String imageUrls = request.getImageUrls();
+
+                // 统一换行符：将 \r\n 转换为 \n（ComfyUI 可能无法正确处理 \r\n）
+                imageUrls = imageUrls.replace("\r\n", "\n").replace("\r", "\n");
+
+                log.info("URL模式 - 原始URL列表:\n{}", imageUrls);
+
+                // 验证并记录每个URL
+                String[] urls = imageUrls.split("\n");
+                log.info("URL模式 - 解析到 {} 个URL", urls.length);
+                for (int i = 0; i < urls.length; i++) {
+                    String url = urls[i].trim();
+                    if (!url.isEmpty()) {
+                        log.info("URL[{}]: {}", i, url);
+                        // 基本格式验证
+                        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                            log.warn("URL[{}] 格式可能不正确（不是http/https）: {}", i, url);
+                        }
+
+                        // 可选：预检URL是否可访问（HEAD请求）
+                        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+                            HttpGet headRequest = new HttpGet(url);
+                            headRequest.setHeader("User-Agent", "Mozilla/5.0");
+                            try (CloseableHttpResponse response = httpClient.execute(headRequest)) {
+                                int statusCode = response.getCode();
+                                if (statusCode >= 200 && statusCode < 300) {
+                                    log.info("URL[{}] 可访问 (状态码: {})", i, statusCode);
+                                } else {
+                                    log.error("URL[{}] 访问异常 (状态码: {})", i, statusCode);
+                                    throw new IOException(String.format("URL[%d] 返回错误状态码 %d: %s", i, statusCode, url));
+                                }
+                            }
+                        } catch (Exception e) {
+                            log.error("URL[{}] 预检失败: {}", i, e.getMessage());
+                            throw new IOException(String.format("URL[%d] 无法访问: %s - %s", i, url, e.getMessage()));
+                        }
+                    }
+                }
+
+                workflow = updateWorkflowParams(workflow, "17", "image", imageUrls);
+
+                // URL模式的其他节点
+                workflow = updateWorkflowParams(workflow, "12", "model_version", request.getModelVersion());
+                workflow = updateWorkflowParams(workflow, "12", "device", request.getDevice());
+                workflow = updateWorkflowParams(workflow, "7", "background_color", request.getBackgroundColor());
+                workflow = updateWorkflowParams(workflow, "7", "use_refine", request.getUseRefine());
+                workflow = updateWorkflowParams(workflow, "16", "height", request.getProcessHeight());
+                workflow = updateWorkflowParams(workflow, "5", "expand", request.getMaskExpand());
+                workflow = updateWorkflowParams(workflow, "5", "blur_radius", request.getBlurRadius());
+                workflow = updateWorkflowParams(workflow, "5", "tapered_corners", request.getTaperedCorners());
+                workflow = updateWorkflowParams(workflow, "5", "fill_holes", request.getFillHoles());
+                workflow = updateWorkflowParams(workflow, "5", "lerp_alpha", request.getLerpAlpha());
+                workflow = updateWorkflowParams(workflow, "5", "decay_factor", request.getDecayFactor());
+                workflow = updateWorkflowParams(workflow, "11", "model_name", request.getUpscaleModel());
+                workflow = updateWorkflowParams(workflow, "14", "filename_prefix", request.getFilenamePrefix());
+
+            } else if ("zip".equals(inputMode)) {
+                // ZIP模式 - 节点 3: CompressedFileLoader
+                workflow = updateWorkflowParams(workflow, "3", "archive_file", uploadedFileName);
+
+                // ZIP模式的其他节点
+                workflow = updateWorkflowParams(workflow, "23", "model_version", request.getModelVersion());
+                workflow = updateWorkflowParams(workflow, "23", "device", request.getDevice());
+                workflow = updateWorkflowParams(workflow, "18", "background_color", request.getBackgroundColor());
+                workflow = updateWorkflowParams(workflow, "18", "use_refine", request.getUseRefine());
+                workflow = updateWorkflowParams(workflow, "27", "height", request.getProcessHeight());
+                workflow = updateWorkflowParams(workflow, "16", "expand", request.getMaskExpand());
+                workflow = updateWorkflowParams(workflow, "16", "blur_radius", request.getBlurRadius());
+                workflow = updateWorkflowParams(workflow, "16", "tapered_corners", request.getTaperedCorners());
+                workflow = updateWorkflowParams(workflow, "16", "fill_holes", request.getFillHoles());
+                workflow = updateWorkflowParams(workflow, "16", "lerp_alpha", request.getLerpAlpha());
+                workflow = updateWorkflowParams(workflow, "16", "decay_factor", request.getDecayFactor());
+                workflow = updateWorkflowParams(workflow, "22", "model_name", request.getUpscaleModel());
+                workflow = updateWorkflowParams(workflow, "25", "filename_prefix", request.getFilenamePrefix());
+
+            } else {
+                // 图片上传模式 - 节点 3: LoadImage
+                workflow = updateWorkflowParams(workflow, "3", "image", uploadedFileName);
+
+                // 图片上传模式的其他节点
+                workflow = updateWorkflowParams(workflow, "148", "model_version", request.getModelVersion());
+                workflow = updateWorkflowParams(workflow, "148", "device", request.getDevice());
+                workflow = updateWorkflowParams(workflow, "147", "background_color", request.getBackgroundColor());
+                workflow = updateWorkflowParams(workflow, "147", "use_refine", request.getUseRefine());
+                workflow = updateWorkflowParams(workflow, "101", "height", request.getProcessHeight());
+                workflow = updateWorkflowParams(workflow, "86", "expand", request.getMaskExpand());
+                workflow = updateWorkflowParams(workflow, "86", "blur_radius", request.getBlurRadius());
+                workflow = updateWorkflowParams(workflow, "86", "tapered_corners", request.getTaperedCorners());
+                workflow = updateWorkflowParams(workflow, "86", "fill_holes", request.getFillHoles());
+                workflow = updateWorkflowParams(workflow, "86", "lerp_alpha", request.getLerpAlpha());
+                workflow = updateWorkflowParams(workflow, "86", "decay_factor", request.getDecayFactor());
+                workflow = updateWorkflowParams(workflow, "145", "model_name", request.getUpscaleModel());
+                workflow = updateWorkflowParams(workflow, "152", "filename_prefix", request.getFilenamePrefix());
+            }
+
+            // 3. 执行工作流
+            log.info("runBatchMatting - 准备提交工作流，模式: {}", inputMode);
+            String promptId = executeWorkflow(workflow);
+            result.setPromptId(promptId);
+
+            // 4. 等待完成
+            JsonNode outputs = waitForCompletion(promptId);
+
+            // 5. 收集所有结果图片 - 只收集 SaveImage 节点的输出
+            List<BatchMattingResult.ImageInfo> imageInfoList = new ArrayList<>();
+
+            // 根据不同模式，确定 SaveImage 节点的 ID
+            String saveImageNodeId;
+            switch (inputMode) {
+                case "urls":
+                    saveImageNodeId = "14";  // matting_img_from_url_api.json 的 SaveImage 节点
+                    break;
+                case "zip":
+                    saveImageNodeId = "25";  // zip-birefnet-matting-api.json 的 SaveImage 节点
+                    break;
+                case "image":
+                default:
+                    saveImageNodeId = "152"; // batch_matting_api.json 的 SaveImage 节点
+                    break;
+            }
+
+            // 只处理 SaveImage 节点的输出
+            if (outputs.has(saveImageNodeId)) {
+                JsonNode saveImageOutput = outputs.get(saveImageNodeId);
+                if (saveImageOutput.has("images")) {
+                    JsonNode images = saveImageOutput.get("images");
+                    if (images.isArray()) {
+                        for (JsonNode imageNode : images) {
+                            String filename = imageNode.get("filename").asText();
+                            String subfolder = imageNode.has("subfolder") ?
+                                    imageNode.get("subfolder").asText() : "";
+                            String type = imageNode.has("type") ?
+                                    imageNode.get("type").asText() : "output";
+
+                            // 过滤掉临时文件（TempImageFromUrl 等）
+                            if (filename.contains("TempImageFromUrl") || "temp".equals(type)) {
+                                log.debug("跳过临时文件: {}", filename);
+                                continue;
+                            }
+
+                            BatchMattingResult.ImageInfo imageInfo = new BatchMattingResult.ImageInfo();
+                            imageInfo.setFilename(filename);
+                            imageInfo.setSubfolder(subfolder);
+
+                            // 构建 ComfyUI 远程 URL
+                            String remoteUrl = config.getApi().getBaseUrl() + "/view?filename=" + filename;
+                            if (!subfolder.isEmpty()) {
+                                remoteUrl += "&subfolder=" + subfolder;
+                            }
+                            remoteUrl += "&type=" + type;
+                            imageInfo.setRemoteUrl(remoteUrl);
+
+                            imageInfoList.add(imageInfo);
+                        }
+                    }
+                }
+            } else {
+                log.warn("未找到 SaveImage 节点({})的输出", saveImageNodeId);
+            }
+
+            if (!imageInfoList.isEmpty()) {
+                result.setSuccess(true);
+                result.setImages(imageInfoList);
+                result.setImageCount(imageInfoList.size());
+                log.info("BiRefNet批量抠图完成，生成 {} 张图片", imageInfoList.size());
+            } else {
+                result.setSuccess(false);
+                result.setErrorMessage("未找到输出图片");
+            }
+
+        } catch (Exception e) {
+            log.error("BiRefNet批量抠图失败", e);
             result.setSuccess(false);
             result.setErrorMessage(e.getMessage());
         }

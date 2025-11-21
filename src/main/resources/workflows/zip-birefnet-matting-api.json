@@ -1,14 +1,50 @@
 {
-  "3": {
+  "13": {
     "inputs": {
-      "image": "2S11808-BKR.jpg"
+      "upscale_model": [
+        "22",
+        0
+      ],
+      "image": [
+        "29",
+        0
+      ]
     },
-    "class_type": "LoadImage",
+    "class_type": "ImageUpscaleWithModel",
     "_meta": {
-      "title": "加载图像"
+      "title": "使用模型放大图像"
     }
   },
-  "86": {
+  "14": {
+    "inputs": {
+      "upscale_model": [
+        "22",
+        0
+      ],
+      "image": [
+        "20",
+        0
+      ]
+    },
+    "class_type": "ImageUpscaleWithModel",
+    "_meta": {
+      "title": "使用模型放大图像"
+    }
+  },
+  "15": {
+    "inputs": {
+      "channel": "red",
+      "image": [
+        "14",
+        0
+      ]
+    },
+    "class_type": "ImageToMask",
+    "_meta": {
+      "title": "图像转换为遮罩"
+    }
+  },
+  "16": {
     "inputs": {
       "expand": 5,
       "incremental_expandrate": 0,
@@ -19,7 +55,7 @@
       "decay_factor": 1,
       "fill_holes": false,
       "mask": [
-        "95",
+        "15",
         0
       ]
     },
@@ -28,89 +64,14 @@
       "title": "Grow Mask With Blur"
     }
   },
-  "91": {
-    "inputs": {
-      "upscale_model": [
-        "145",
-        0
-      ],
-      "image": [
-        "190",
-        0
-      ]
-    },
-    "class_type": "ImageUpscaleWithModel",
-    "_meta": {
-      "title": "使用模型放大图像"
-    }
-  },
-  "92": {
-    "inputs": {
-      "upscale_model": [
-        "145",
-        0
-      ],
-      "image": [
-        "94",
-        0
-      ]
-    },
-    "class_type": "ImageUpscaleWithModel",
-    "_meta": {
-      "title": "使用模型放大图像"
-    }
-  },
-  "94": {
-    "inputs": {
-      "mask": [
-        "190",
-        1
-      ]
-    },
-    "class_type": "MaskToImage",
-    "_meta": {
-      "title": "遮罩转换为图像"
-    }
-  },
-  "95": {
-    "inputs": {
-      "channel": "red",
-      "image": [
-        "92",
-        0
-      ]
-    },
-    "class_type": "ImageToMask",
-    "_meta": {
-      "title": "图像转换为遮罩"
-    }
-  },
-  "101": {
-    "inputs": {
-      "width": 0,
-      "height": 1024,
-      "interpolation": "lanczos",
-      "method": "keep proportion",
-      "condition": "always",
-      "multiple_of": 0,
-      "image": [
-        "3",
-        0
-      ]
-    },
-    "class_type": "ImageResize+",
-    "_meta": {
-      "title": "🔧 Image Resize"
-    }
-  },
-  "102": {
+  "17": {
     "inputs": {
       "width": [
-        "103",
+        "21",
         0
       ],
       "height": [
-        "103",
+        "21",
         1
       ],
       "interpolation": "lanczos",
@@ -118,7 +79,7 @@
       "condition": "always",
       "multiple_of": 0,
       "image": [
-        "191",
+        "30",
         0
       ]
     },
@@ -127,37 +88,16 @@
       "title": "🔧 Image Resize"
     }
   },
-  "103": {
-    "inputs": {
-      "image": [
-        "3",
-        0
-      ]
-    },
-    "class_type": "GetImageSize+",
-    "_meta": {
-      "title": "🔧 Get Image Size"
-    }
-  },
-  "145": {
-    "inputs": {
-      "model_name": "4x-UltraSharp.pth"
-    },
-    "class_type": "Upscale Model Loader",
-    "_meta": {
-      "title": "Upscale Model Loader"
-    }
-  },
-  "147": {
+  "18": {
     "inputs": {
       "background_color": "transparency",
       "use_refine": true,
       "model": [
-        "148",
+        "23",
         0
       ],
       "image": [
-        "101",
+        "27",
         0
       ]
     },
@@ -166,7 +106,40 @@
       "title": "BiRefNet Remove Background🌟"
     }
   },
-  "148": {
+  "20": {
+    "inputs": {
+      "mask": [
+        "29",
+        1
+      ]
+    },
+    "class_type": "MaskToImage",
+    "_meta": {
+      "title": "遮罩转换为图像"
+    }
+  },
+  "21": {
+    "inputs": {
+      "image": [
+        "31",
+        0
+      ]
+    },
+    "class_type": "GetImageSize+",
+    "_meta": {
+      "title": "🔧 Get Image Size"
+    }
+  },
+  "22": {
+    "inputs": {
+      "model_name": "4x-UltraSharp.pth"
+    },
+    "class_type": "Upscale Model Loader",
+    "_meta": {
+      "title": "Upscale Model Loader"
+    }
+  },
+  "23": {
     "inputs": {
       "model_version": "BiRefNet-DIS5K",
       "device": "auto"
@@ -176,11 +149,11 @@
       "title": "BiRefNet Loader🌟"
     }
   },
-  "152": {
+  "25": {
     "inputs": {
       "filename_prefix": "2025-11-20/first-matting/img",
       "images": [
-        "102",
+        "17",
         0
       ]
     },
@@ -189,10 +162,28 @@
       "title": "保存图像"
     }
   },
-  "190": {
+  "27": {
+    "inputs": {
+      "width": 0,
+      "height": 1024,
+      "interpolation": "lanczos",
+      "method": "keep proportion",
+      "condition": "always",
+      "multiple_of": 0,
+      "image": [
+        "31",
+        0
+      ]
+    },
+    "class_type": "ImageResize+",
+    "_meta": {
+      "title": "🔧 Image Resize"
+    }
+  },
+  "29": {
     "inputs": {
       "image": [
-        "147",
+        "18",
         0
       ]
     },
@@ -201,20 +192,33 @@
       "title": "分离图像Alpha"
     }
   },
-  "191": {
+  "30": {
     "inputs": {
       "image": [
-        "91",
+        "13",
         0
       ],
       "alpha": [
-        "86",
+        "16",
         0
       ]
     },
     "class_type": "JoinImageWithAlpha",
     "_meta": {
       "title": "合并图像Alpha"
+    }
+  },
+  "31": {
+    "inputs": {
+      "archive_file": "matting.zip",
+      "file_filter": "all",
+      "max_files": 100,
+      "extract_path_filter": "",
+      "上传压缩文件 📤": "upload"
+    },
+    "class_type": "CompressedFileLoader",
+    "_meta": {
+      "title": "压缩文件加载器 📦"
     }
   }
 }

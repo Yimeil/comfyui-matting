@@ -1,0 +1,222 @@
+{
+  "2": {
+    "inputs": {
+      "upscale_model": [
+        "11",
+        0
+      ],
+      "image": [
+        "30",
+        0
+      ]
+    },
+    "class_type": "ImageUpscaleWithModel",
+    "_meta": {
+      "title": "使用模型放大图像"
+    }
+  },
+  "3": {
+    "inputs": {
+      "upscale_model": [
+        "11",
+        0
+      ],
+      "image": [
+        "9",
+        0
+      ]
+    },
+    "class_type": "ImageUpscaleWithModel",
+    "_meta": {
+      "title": "使用模型放大图像"
+    }
+  },
+  "4": {
+    "inputs": {
+      "channel": "red",
+      "image": [
+        "3",
+        0
+      ]
+    },
+    "class_type": "ImageToMask",
+    "_meta": {
+      "title": "图像转换为遮罩"
+    }
+  },
+  "5": {
+    "inputs": {
+      "expand": 5,
+      "incremental_expandrate": 0,
+      "tapered_corners": true,
+      "flip_input": false,
+      "blur_radius": 1.5,
+      "lerp_alpha": 1,
+      "decay_factor": 1,
+      "fill_holes": false,
+      "mask": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "GrowMaskWithBlur",
+    "_meta": {
+      "title": "Grow Mask With Blur"
+    }
+  },
+  "6": {
+    "inputs": {
+      "width": [
+        "10",
+        0
+      ],
+      "height": [
+        "10",
+        1
+      ],
+      "interpolation": "lanczos",
+      "method": "keep proportion",
+      "condition": "always",
+      "multiple_of": 0,
+      "image": [
+        "31",
+        0
+      ]
+    },
+    "class_type": "ImageResize+",
+    "_meta": {
+      "title": "🔧 Image Resize"
+    }
+  },
+  "7": {
+    "inputs": {
+      "background_color": "transparency",
+      "use_refine": true,
+      "model": [
+        "12",
+        0
+      ],
+      "image": [
+        "16",
+        0
+      ]
+    },
+    "class_type": "BiRefNet_Remove_Background",
+    "_meta": {
+      "title": "BiRefNet Remove Background🌟"
+    }
+  },
+  "9": {
+    "inputs": {
+      "mask": [
+        "30",
+        1
+      ]
+    },
+    "class_type": "MaskToImage",
+    "_meta": {
+      "title": "遮罩转换为图像"
+    }
+  },
+  "10": {
+    "inputs": {
+      "image": [
+        "17",
+        0
+      ]
+    },
+    "class_type": "GetImageSize+",
+    "_meta": {
+      "title": "🔧 Get Image Size"
+    }
+  },
+  "11": {
+    "inputs": {
+      "model_name": "4x-UltraSharp.pth"
+    },
+    "class_type": "Upscale Model Loader",
+    "_meta": {
+      "title": "Upscale Model Loader"
+    }
+  },
+  "12": {
+    "inputs": {
+      "model_version": "BiRefNet-DIS5K",
+      "device": "auto"
+    },
+    "class_type": "BiRefNet_Loader",
+    "_meta": {
+      "title": "BiRefNet Loader🌟"
+    }
+  },
+  "14": {
+    "inputs": {
+      "filename_prefix": "2025-11-20/first-matting/img",
+      "images": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "保存图像"
+    }
+  },
+  "16": {
+    "inputs": {
+      "width": 0,
+      "height": 1024,
+      "interpolation": "lanczos",
+      "method": "keep proportion",
+      "condition": "always",
+      "multiple_of": 0,
+      "image": [
+        "17",
+        0
+      ]
+    },
+    "class_type": "ImageResize+",
+    "_meta": {
+      "title": "🔧 Image Resize"
+    }
+  },
+  "17": {
+    "inputs": {
+      "image": "http://10.100.1.200:8888/amazon/2025-10/13-10-58-26-455/6EE308651-BK-OS.jpg\nhttp://10.100.1.200:8888/amazon/2025-10/13-10-58-31-224/6EE308651-KH-OS.jpg\nhttp://10.100.1.200:8888/amazon/2025-10/13-10-58-34-484/6EE308651-W-OS.jpg",
+      "keep_alpha_channel": false,
+      "output_mode": false
+    },
+    "class_type": "LoadImageFromUrl",
+    "_meta": {
+      "title": "Load Image From URL"
+    }
+  },
+  "30": {
+    "inputs": {
+      "image": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "SplitImageWithAlpha",
+    "_meta": {
+      "title": "分离图像Alpha"
+    }
+  },
+  "31": {
+    "inputs": {
+      "image": [
+        "2",
+        0
+      ],
+      "alpha": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "JoinImageWithAlpha",
+    "_meta": {
+      "title": "合并图像Alpha"
+    }
+  }
+}
