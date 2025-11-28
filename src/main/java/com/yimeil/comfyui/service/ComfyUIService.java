@@ -11,6 +11,8 @@ import com.yimeil.comfyui.model.CollageResult;
 import com.yimeil.comfyui.model.KeywordMattingRequest;
 import com.yimeil.comfyui.model.MattingRequest;
 import com.yimeil.comfyui.model.MattingResult;
+import com.yimeil.comfyui.model.QwenEditRequest;
+import com.yimeil.comfyui.model.QwenTranslateRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
@@ -859,6 +861,341 @@ public class ComfyUIService {
                 return uploadedName;
             }
         }
+    }
+
+    /**
+     * 执行Qwen多角度编辑
+     * 工作流: qwen-Edit-Multiple-angles-api.json
+     *
+     * @param request Qwen编辑请求参数
+     * @return 编辑结果
+     */
+    public MattingResult runQwenEdit(QwenEditRequest request) {
+        MattingResult result = new MattingResult();
+        long startTime = System.currentTimeMillis();
+
+        try {
+            // 1. 加载Qwen编辑工作流
+            JsonNode workflow = loadWorkflowFromResource("qwen-Edit-Multiple-angles-api.json");
+
+            // 2. 上传图片
+            String uploadedName = uploadImage(request.getImage());
+
+            // 3. 更新工作流参数
+            // 节点 9: LoadImage - 加载输入图片
+            workflow = updateWorkflowParams(workflow, "9", "image", uploadedName);
+
+            // 节点 45: ImageResize+ - 图像缩放参数
+            if (request.getResizeWidth() != null) {
+                workflow = updateWorkflowParams(workflow, "45", "width", request.getResizeWidth());
+            }
+            if (request.getResizeHeight() != null) {
+                workflow = updateWorkflowParams(workflow, "45", "height", request.getResizeHeight());
+            }
+            if (request.getInterpolation() != null) {
+                workflow = updateWorkflowParams(workflow, "45", "interpolation", request.getInterpolation());
+            }
+
+            // 节点 41: BiRefNetRMBG - 背景移除参数
+            if (request.getBirefnetModel() != null) {
+                workflow = updateWorkflowParams(workflow, "41", "model", request.getBirefnetModel());
+            }
+            if (request.getMaskBlur() != null) {
+                workflow = updateWorkflowParams(workflow, "41", "mask_blur", request.getMaskBlur());
+            }
+            if (request.getMaskOffset() != null) {
+                workflow = updateWorkflowParams(workflow, "41", "mask_offset", request.getMaskOffset());
+            }
+            if (request.getInvertOutput() != null) {
+                workflow = updateWorkflowParams(workflow, "41", "invert_output", request.getInvertOutput());
+            }
+            if (request.getRefineForeground() != null) {
+                workflow = updateWorkflowParams(workflow, "41", "refine_foreground", request.getRefineForeground());
+            }
+            if (request.getBackground() != null) {
+                workflow = updateWorkflowParams(workflow, "41", "background", request.getBackground());
+            }
+            if (request.getBackgroundColor() != null) {
+                workflow = updateWorkflowParams(workflow, "41", "background_color", request.getBackgroundColor());
+            }
+
+            // 节点 20: TextEncodeQwenImageEditPlusAdvance - 文本编码和编辑指令
+            if (request.getTargetSize() != null) {
+                workflow = updateWorkflowParams(workflow, "20", "target_size", request.getTargetSize());
+            }
+            if (request.getTargetVlSize() != null) {
+                workflow = updateWorkflowParams(workflow, "20", "target_vl_size", request.getTargetVlSize());
+            }
+            if (request.getUpscaleMethod() != null) {
+                workflow = updateWorkflowParams(workflow, "20", "upscale_method", request.getUpscaleMethod());
+            }
+            if (request.getCropMethod() != null) {
+                workflow = updateWorkflowParams(workflow, "20", "crop_method", request.getCropMethod());
+            }
+
+            // 构建完整的编辑指令
+            String fullInstruction = buildQwenInstruction(request);
+            workflow = updateWorkflowParams(workflow, "20", "instruction", fullInstruction);
+
+            // 节点 30: Text Multiline - 用户编辑指令
+            if (request.getEditInstruction() != null && !request.getEditInstruction().isEmpty()) {
+                workflow = updateWorkflowParams(workflow, "30", "text", request.getEditInstruction());
+            }
+
+            // 节点 16: KSampler - 采样参数
+            if (request.getSeed() != null) {
+                workflow = updateWorkflowParams(workflow, "16", "seed", request.getSeed());
+            }
+            if (request.getSteps() != null) {
+                workflow = updateWorkflowParams(workflow, "16", "steps", request.getSteps());
+            }
+            if (request.getCfg() != null) {
+                workflow = updateWorkflowParams(workflow, "16", "cfg", request.getCfg());
+            }
+            if (request.getSamplerName() != null) {
+                workflow = updateWorkflowParams(workflow, "16", "sampler_name", request.getSamplerName());
+            }
+            if (request.getScheduler() != null) {
+                workflow = updateWorkflowParams(workflow, "16", "scheduler", request.getScheduler());
+            }
+            if (request.getDenoise() != null) {
+                workflow = updateWorkflowParams(workflow, "16", "denoise", request.getDenoise());
+            }
+
+            // 节点 6: ModelSamplingAuraFlow - shift参数
+            if (request.getShift() != null) {
+                workflow = updateWorkflowParams(workflow, "6", "shift", request.getShift());
+            }
+
+            // 节点 7: CFGNorm - CFG归一化强度
+            if (request.getCfgNormStrength() != null) {
+                workflow = updateWorkflowParams(workflow, "7", "strength", request.getCfgNormStrength());
+            }
+
+            // 节点 31: UpscaleModelLoader - 放大模型
+            if (request.getUpscaleModelName() != null) {
+                workflow = updateWorkflowParams(workflow, "31", "model_name", request.getUpscaleModelName());
+            }
+
+            // 节点 35: RepeatLatentBatch - 重复批次
+            if (request.getRepeatAmount() != null) {
+                workflow = updateWorkflowParams(workflow, "35", "amount", request.getRepeatAmount());
+            }
+
+            // 4. 执行工作流
+            log.debug("runQwenEdit - 更新后的工作流: {}", objectMapper.writeValueAsString(workflow));
+            String promptId = executeWorkflow(workflow);
+            result.setPromptId(promptId);
+
+            // 5. 等待完成
+            JsonNode outputs = waitForCompletion(promptId);
+
+            // 6. 解析输出 - 节点 18 (PreviewImage) 或节点 33 (ImageUpscaleWithModel)
+            boolean foundOutput = false;
+            for (JsonNode nodeOutput : outputs) {
+                if (nodeOutput.has("images")) {
+                    JsonNode images = nodeOutput.get("images");
+                    if (images.isArray() && images.size() > 0) {
+                        JsonNode firstImage = images.get(0);
+                        String filename = firstImage.get("filename").asText();
+                        String subfolder = firstImage.has("subfolder") ?
+                                firstImage.get("subfolder").asText() : "";
+                        String type = firstImage.has("type") ?
+                                firstImage.get("type").asText() : "output";
+
+                        // 构建 ComfyUI 远程 URL
+                        String remoteUrl = config.getApi().getBaseUrl() + "/view?filename=" + filename;
+                        if (!subfolder.isEmpty()) {
+                            remoteUrl += "&subfolder=" + subfolder;
+                        }
+                        remoteUrl += "&type=" + type;
+
+                        result.setSuccess(true);
+                        result.setOutputFilename(filename);
+                        result.setRemoteUrl(remoteUrl);
+                        foundOutput = true;
+                        log.info("Qwen编辑完成，输出文件: {}", filename);
+                        break;
+                    }
+                }
+            }
+
+            if (!foundOutput) {
+                result.setSuccess(false);
+                result.setErrorMessage("未找到输出图片");
+            }
+
+        } catch (Exception e) {
+            log.error("Qwen多角度编辑失败", e);
+            result.setSuccess(false);
+            result.setErrorMessage(e.getMessage());
+        }
+
+        result.setExecutionTime(System.currentTimeMillis() - startTime);
+        return result;
+    }
+
+    /**
+     * 构建Qwen编辑完整指令
+     * 拼接系统指令、用户编辑指令和场景上下文
+     */
+    private String buildQwenInstruction(QwenEditRequest request) {
+        StringBuilder instruction = new StringBuilder();
+
+        // 系统预设指令（对象保护协议）
+        if (request.getSystemInstruction() != null && !request.getSystemInstruction().isEmpty()) {
+            instruction.append(request.getSystemInstruction());
+        } else {
+            // 使用默认的对象保护协议
+            instruction.append("CRITICAL OBJECT PRESERVATION PROTOCOL: ");
+            instruction.append("1) First, carefully count and identify every single object in the input image. ");
+            instruction.append("2) List the exact count. ");
+            instruction.append("3) Execute the user's editing instructions while maintaining EXACTLY this object count. ");
+            instruction.append("4) NEVER add new objects, remove existing objects, or merge objects together. ");
+            instruction.append("5) Only modify: position, orientation, lighting, background, camera angle. ");
+            instruction.append("6) Preserve all object sizes, colors, and individual identities. ");
+            instruction.append("7) After editing, verify the final count matches the original count exactly. ");
+            instruction.append("CRITICAL SIZE CONTROL: All objects must maintain realistic, real-world proportional sizes.");
+        }
+
+        instruction.append("\n");
+
+        // 用户编辑指令
+        if (request.getEditInstruction() != null && !request.getEditInstruction().isEmpty()) {
+            instruction.append(request.getEditInstruction());
+        }
+
+        // 场景上下文
+        if (request.getSceneContext() != null && !request.getSceneContext().isEmpty()) {
+            instruction.append(" 场景: ").append(request.getSceneContext());
+        }
+
+        return instruction.toString();
+    }
+
+    /**
+     * 执行Qwen图像翻译
+     * 工作流: qwen-img-translate-api.json
+     *
+     * @param request Qwen翻译请求参数
+     * @return 翻译结果
+     */
+    public MattingResult runQwenTranslate(QwenTranslateRequest request) {
+        MattingResult result = new MattingResult();
+        long startTime = System.currentTimeMillis();
+
+        try {
+            // 1. 加载Qwen翻译工作流
+            JsonNode workflow = loadWorkflowFromResource("qwen-img-translate-api.json");
+
+            // 2. 处理图片输入（支持上传或URL）
+            String imageName = "";
+            if (request.getImage() != null && !request.getImage().isEmpty()) {
+                // 上传图片
+                imageName = uploadImage(request.getImage());
+                log.info("图片已上传: {}", imageName);
+            } else if (request.getImageUrl() != null && !request.getImageUrl().isEmpty()) {
+                // 使用URL
+                imageName = request.getImageUrl();
+                log.info("使用图片URL: {}", imageName);
+            }
+
+            // 3. 更新工作流参数
+            // 节点 2: LoadImage - 加载输入图片
+            workflow = updateWorkflowParams(workflow, "2", "image", imageName);
+
+            // 节点 1: QwenImageTranslate - 翻译配置
+            if (request.getSourceLang() != null) {
+                workflow = updateWorkflowParams(workflow, "1", "source_lang", request.getSourceLang());
+            }
+            if (request.getTargetLang() != null) {
+                workflow = updateWorkflowParams(workflow, "1", "target_lang", request.getTargetLang());
+            }
+            if (request.getApiKey() != null) {
+                workflow = updateWorkflowParams(workflow, "1", "api_key", request.getApiKey());
+            }
+            if (request.getUploadMethod() != null) {
+                workflow = updateWorkflowParams(workflow, "1", "upload_method", request.getUploadMethod());
+            }
+
+            // OSS相关参数（如果使用OSS上传）
+            if (request.getUploadToken() != null && !request.getUploadToken().isEmpty()) {
+                workflow = updateWorkflowParams(workflow, "1", "upload_token", request.getUploadToken());
+            }
+            if (request.getOssEndpoint() != null && !request.getOssEndpoint().isEmpty()) {
+                workflow = updateWorkflowParams(workflow, "1", "oss_endpoint", request.getOssEndpoint());
+            }
+            if (request.getOssBucket() != null && !request.getOssBucket().isEmpty()) {
+                workflow = updateWorkflowParams(workflow, "1", "oss_bucket", request.getOssBucket());
+            }
+
+            // 如果提供了图片URL
+            if (request.getImageUrl() != null && !request.getImageUrl().isEmpty()) {
+                workflow = updateWorkflowParams(workflow, "1", "image_url", request.getImageUrl());
+            }
+
+            // 可选参数
+            if (request.getDomainHint() != null && !request.getDomainHint().isEmpty()) {
+                workflow = updateWorkflowParams(workflow, "1", "domain_hint", request.getDomainHint());
+            }
+            if (request.getMaxWaitTime() != null) {
+                workflow = updateWorkflowParams(workflow, "1", "max_wait_time", request.getMaxWaitTime());
+            }
+            if (request.getSkipImgSegment() != null) {
+                workflow = updateWorkflowParams(workflow, "1", "skip_img_segment", request.getSkipImgSegment());
+            }
+
+            // 4. 执行工作流
+            log.debug("runQwenTranslate - 更新后的工作流: {}", objectMapper.writeValueAsString(workflow));
+            String promptId = executeWorkflow(workflow);
+            result.setPromptId(promptId);
+
+            // 5. 等待完成
+            JsonNode outputs = waitForCompletion(promptId);
+
+            // 6. 解析输出 - 节点 3 (PreviewImage)
+            boolean foundOutput = false;
+            for (JsonNode nodeOutput : outputs) {
+                if (nodeOutput.has("images")) {
+                    JsonNode images = nodeOutput.get("images");
+                    if (images.isArray() && images.size() > 0) {
+                        JsonNode firstImage = images.get(0);
+                        String filename = firstImage.get("filename").asText();
+                        String subfolder = firstImage.has("subfolder") ?
+                                firstImage.get("subfolder").asText() : "";
+                        String type = firstImage.has("type") ?
+                                firstImage.get("type").asText() : "output";
+
+                        // 构建 ComfyUI 远程 URL
+                        String remoteUrl = config.getApi().getBaseUrl() + "/view?filename=" + filename;
+                        if (!subfolder.isEmpty()) {
+                            remoteUrl += "&subfolder=" + subfolder;
+                        }
+                        remoteUrl += "&type=" + type;
+
+                        result.setSuccess(true);
+                        result.setOutputFilename(filename);
+                        result.setRemoteUrl(remoteUrl);
+                        foundOutput = true;
+                        log.info("Qwen翻译完成，输出文件: {}", filename);
+                        break;
+                    }
+                }
+            }
+
+            if (!foundOutput) {
+                result.setSuccess(false);
+                result.setErrorMessage("未找到输出图片");
+            }
+
+        } catch (Exception e) {
+            log.error("Qwen图像翻译失败", e);
+            result.setSuccess(false);
+            result.setErrorMessage(e.getMessage());
+        }
+
+        result.setExecutionTime(System.currentTimeMillis() - startTime);
+        return result;
     }
 
     /**

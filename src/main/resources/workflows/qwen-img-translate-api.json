@@ -1,0 +1,46 @@
+{
+  "1": {
+    "inputs": {
+      "source_lang": "zh",
+      "target_lang": "en",
+      "image_url": "",
+      "api_key": "sk-35eaf027ad4e45f7aa13f8ffbdd762b0",
+      "upload_method": "dashscope",
+      "upload_token": "",
+      "oss_endpoint": "",
+      "oss_bucket": "",
+      "domain_hint": "",
+      "max_wait_time": 300,
+      "skip_img_segment": false,
+      "image": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "QwenImageTranslate",
+    "_meta": {
+      "title": "千问图像翻译 (Qwen Image Translate)"
+    }
+  },
+  "2": {
+    "inputs": {
+      "image": "O1CN01KaATUn2Dn8DUmWdqr_!!2219861158653-0-cib.jpg"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "加载图像"
+    }
+  },
+  "3": {
+    "inputs": {
+      "images": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "预览图像"
+    }
+  }
+}

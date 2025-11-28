@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qwen 多角度编辑</title>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        /* 页面特有样式 - 无需额外样式，全部使用 common.css */
+    </style>
+</head>
+<body>
+    <div id="app">
+        <a href="index.html" class="back-link">← 返回首页</a>
+
+        <div class="header">
+            <h1>🎨 Qwen 多角度编辑</h1>
+            <p>AI驱动的智能图像场景编辑，保持物体数量和真实比例</p>
+        </div>
+
+        <div class="card">
+            <!-- 图片上传 -->
+            <div class="form-section">
+                <h3>📁 上传图片</h3>
+                <div
+                    class="file-upload-area"
+                    :class="{ 'has-file': selectedFile, 'dragover': isDragging }"
+                    @click="triggerFileInput"
+                    @dragover.prevent="isDragging = true"
+                    @dragleave.prevent="isDragging = false"
+                    @drop.prevent="handleFileDrop"
+                >
+                    <div class="upload-icon">{{ selectedFile ? '✅' : '📤' }}</div>
+                    <div>
+                        <strong>{{ selectedFile ? selectedFile.name : '点击或拖拽上传图片' }}</strong>
+                    </div>
+                    <div class="hint-text" v-if="!selectedFile">
+                        支持 JPG、PNG 格式
+                    </div>
+                </div>
+                <input
+                    type="file"
+                    ref="fileInput"
+                    accept="image/*"
+                    style="display: none;"
+                    @change="handleFileSelect"
+                >
+
+                <div v-if="previewUrl" class="preview-container">
+                    <img :src="previewUrl" alt="预览图" class="preview-image">
+                </div>
+            </div>
+
+            <!-- 编辑指令 -->
+            <div class="form-section">
+                <h3>✏️ 编辑指令</h3>
+                <div class="form-group">
+                    <label>编辑内容描述</label>
+                    <textarea
+                        v-model="params.editInstruction"
+                        placeholder="例如：将图中所有物品按照其真实世界的正常尺寸比例，合理摆放在儿童书桌上"
+                    ></textarea>
+                    <div class="hint-text">描述你想要的编辑效果，AI会保持物体数量和真实比例</div>
+                </div>
+
+                <div class="form-group">
+                    <label>场景上下文（可选）</label>
+                    <input
+                        type="text"
+                        v-model="params.sceneContext"
+                        placeholder="例如：儿童房间、办公桌、户外草地等"
+                    >
+                </div>
+            </div>
+
+            <!-- 执行按钮 -->
+            <button
+                class="btn-primary"
+                @click="executeEdit"
+                :disabled="!selectedFile || processing"
+            >
+                <span v-if="processing">
+                    <span class="spinner"></span> 处理中...
+                </span>
+                <span v-else>🚀 开始编辑</span>
+            </button>
+
+            <div v-if="progressMessage" class="progress-message">
+                {{ progressMessage }}
+            </div>
+
+            <div v-if="errorMessage" class="error-message">
+                ❌ {{ errorMessage }}
+            </div>
+
+            <!-- 结果展示 -->
+            <div v-if="result && result.success" class="result-panel">
+                <h3>✅ 编辑完成</h3>
+                <img :src="result.remoteUrl" alt="编辑结果" class="result-image">
+
+                <div class="result-info">
+                    <div class="info-item">
+                        <strong>文件名:</strong> {{ result.outputFilename }}
+                    </div>
+                    <div class="info-item">
+                        <strong>任务ID:</strong> {{ result.promptId }}
+                    </div>
+                    <div class="info-item">
+                        <strong>处理时间:</strong> {{ formatTime(result.executionTime) }}
+                    </div>
+                </div>
+
+                <a
+                    :href="downloadUrl"
+                    :download="result.outputFilename"
+                    class="btn-download"
+                >
+                    💾 下载图片
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    selectedFile: null,
+                    previewUrl: null,
+                    isDragging: false,
+                    processing: false,
+                    progressMessage: '',
+                    errorMessage: '',
+                    result: null,
+                    params: {
+                        editInstruction: '将图中所有物品按照其真实世界的正常尺寸比例，合理摆放在儿童书桌上',
+                        sceneContext: ''
+                    }
+                };
+            },
+            computed: {
+                downloadUrl() {
+                    if (!this.result || !this.result.remoteUrl) return '';
+                    return `/api/matting/download?url=${encodeURIComponent(this.result.remoteUrl)}&filename=${encodeURIComponent(this.result.outputFilename)}`;
+                }
+            },
+            methods: {
+                triggerFileInput() {
+                    this.$refs.fileInput.click();
+                },
+                handleFileSelect(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        this.setFile(file);
+                    }
+                },
+                handleFileDrop(event) {
+                    this.isDragging = false;
+                    const file = event.dataTransfer.files[0];
+                    if (file && file.type.startsWith('image/')) {
+                        this.setFile(file);
+                    }
+                },
+                setFile(file) {
+                    this.selectedFile = file;
+                    this.previewUrl = URL.createObjectURL(file);
+                    this.result = null;
+                    this.errorMessage = '';
+                },
+                async executeEdit() {
+                    if (!this.selectedFile) {
+                        this.errorMessage = '请先上传图片';
+                        return;
+                    }
+
+                    this.processing = true;
+                    this.progressMessage = '正在上传图片并处理...';
+                    this.errorMessage = '';
+                    this.result = null;
+
+                    try {
+                        const formData = new FormData();
+                        formData.append('image', this.selectedFile);
+
+                        // 只添加用户配置的参数
+                        if (this.params.editInstruction) {
+                            formData.append('editInstruction', this.params.editInstruction);
+                        }
+                        if (this.params.sceneContext) {
+                            formData.append('sceneContext', this.params.sceneContext);
+                        }
+
+                        const response = await axios.post('/api/qwen/edit-angles', formData, {
+                            headers: {
+                                'Content-Type': 'multipart/form-data'
+                            },
+                            timeout: 600000 // 10分钟超时
+                        });
+
+                        if (response.data.code === 200 && response.data.data) {
+                            this.result = response.data.data;
+                            this.progressMessage = '✅ 编辑完成！';
+                            setTimeout(() => {
+                                this.progressMessage = '';
+                            }, 3000);
+                        } else {
+                            this.errorMessage = response.data.message || '编辑失败';
+                        }
+                    } catch (error) {
+                        console.error('编辑失败:', error);
+                        this.errorMessage = error.response?.data?.message || error.message || '编辑失败，请检查网络连接';
+                    } finally {
+                        this.processing = false;
+                    }
+                },
+                formatTime(ms) {
+                    const seconds = Math.floor(ms / 1000);
+                    if (seconds < 60) {
+                        return `${seconds}秒`;
+                    }
+                    const minutes = Math.floor(seconds / 60);
+                    const remainingSeconds = seconds % 60;
+                    return `${minutes}分${remainingSeconds}秒`;
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

@@ -1,0 +1,346 @@
+{
+  "1": {
+    "inputs": {
+      "unet_name": "qwen/qwen_image_edit_2509_fp8_e4m3fn.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "2": {
+    "inputs": {
+      "lora_name": "qwen/Qwen-Image-Edit-2509-Lightning-4steps-V1.0-bf16.safetensors",
+      "strength_model": 1,
+      "model": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoraLoaderModelOnly"
+    }
+  },
+  "3": {
+    "inputs": {
+      "clip_name": "qwen/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+      "type": "qwen_image",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "4": {
+    "inputs": {
+      "vae_name": "qwen/qwen_image_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "5": {
+    "inputs": {
+      "lora_name": "qwen/镜头转换.safetensors",
+      "strength_model": 1,
+      "model": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoraLoaderModelOnly"
+    }
+  },
+  "6": {
+    "inputs": {
+      "shift": 3,
+      "model": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingAuraFlow",
+    "_meta": {
+      "title": "采样算法（AuraFlow）"
+    }
+  },
+  "7": {
+    "inputs": {
+      "strength": 1,
+      "model": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "CFGNorm",
+    "_meta": {
+      "title": "CFGNorm"
+    }
+  },
+  "9": {
+    "inputs": {
+      "image": "6AC1100328-CBL.jpg"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "加载图像"
+    }
+  },
+  "12": {
+    "inputs": {
+      "pixels": [
+        "45",
+        0
+      ],
+      "vae": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE编码"
+    }
+  },
+  "16": {
+    "inputs": {
+      "seed": 947307071580783,
+      "steps": 3,
+      "cfg": 1.2,
+      "sampler_name": "euler",
+      "scheduler": "beta",
+      "denoise": 0.85,
+      "model": [
+        "7",
+        0
+      ],
+      "positive": [
+        "20",
+        0
+      ],
+      "negative": [
+        "25",
+        0
+      ],
+      "latent_image": [
+        "35",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "K采样器"
+    }
+  },
+  "17": {
+    "inputs": {
+      "samples": [
+        "16",
+        0
+      ],
+      "vae": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE解码"
+    }
+  },
+  "18": {
+    "inputs": {
+      "images": [
+        "33",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "预览图像"
+    }
+  },
+  "20": {
+    "inputs": {
+      "prompt": [
+        "28",
+        0
+      ],
+      "target_size": 1024,
+      "target_vl_size": 384,
+      "upscale_method": "lanczos",
+      "crop_method": "center",
+      "instruction": "CRITICAL OBJECT PRESERVATION PROTOCOL: 1) First, carefully count and identify every single object in the input image (bottles, boxes, items, etc.). 2) List the exact count: 'I see [X] bottles, [Y] boxes, [Z] items, etc.' 3) Execute the user's editing instructions while maintaining EXACTLY this object count. 4) NEVER add new objects, remove existing objects, or merge objects together. 5) Only modify: position, orientation, lighting, background, camera angle. 6) Preserve all object sizes, colors, and individual identities. 7) After editing, verify the final count matches the original count exactly\nCRITICAL SIZE CONTROL: All objects must maintain realistic, real-world proportional sizes appropriate for their actual function and typical use. Do not make objects oversized or undersized - keep them at natural, realistic scales that would be expected in real life",
+      "clip": [
+        "3",
+        0
+      ],
+      "vae": [
+        "4",
+        0
+      ],
+      "vl_resize_image1": [
+        "42",
+        0
+      ]
+    },
+    "class_type": "TextEncodeQwenImageEditPlusAdvance_lrzjason",
+    "_meta": {
+      "title": "TextEncodeQwenImageEditPlusAdvance lrzjason"
+    }
+  },
+  "25": {
+    "inputs": {
+      "conditioning": [
+        "20",
+        0
+      ]
+    },
+    "class_type": "ConditioningZeroOut",
+    "_meta": {
+      "title": "条件零化"
+    }
+  },
+  "26": {
+    "inputs": {
+      "text": "Convert white background image to scene"
+    },
+    "class_type": "Text Multiline",
+    "_meta": {
+      "title": "Text Multiline"
+    }
+  },
+  "27": {
+    "inputs": {
+      "text": "关注物体细节；如果识别出的物体是细长的，则使用俯视视角；否则，使用正视视角；保持镜头对准物体。\n确保每个物品保持符合实际使用场景的合理大小。要求：保持原图中每个物品的确切数量不变，只改变它们的位置和角度以及大小，确保所有物品都清晰可见且互不遮挡。物品数量必须与原图完全一致，不能增加、减少或合并任何物品。光影柔和自然，禁止物品变形或者穿模。"
+    },
+    "class_type": "Text Multiline",
+    "_meta": {
+      "title": "Text Multiline"
+    }
+  },
+  "28": {
+    "inputs": {
+      "delimiter": "。",
+      "clean_whitespace": "true",
+      "text_a": [
+        "26",
+        0
+      ],
+      "text_b": [
+        "30",
+        0
+      ],
+      "text_d": [
+        "27",
+        0
+      ]
+    },
+    "class_type": "Text Concatenate",
+    "_meta": {
+      "title": "Text Concatenate"
+    }
+  },
+  "30": {
+    "inputs": {
+      "text": "将图中所有物品按照其真实世界的正常尺寸比例，合理摆放在儿童书桌上"
+    },
+    "class_type": "Text Multiline",
+    "_meta": {
+      "title": "Text Multiline"
+    }
+  },
+  "31": {
+    "inputs": {
+      "model_name": "1xDeJPG_realplksr_otf.pth"
+    },
+    "class_type": "UpscaleModelLoader",
+    "_meta": {
+      "title": "加载放大模型"
+    }
+  },
+  "33": {
+    "inputs": {
+      "upscale_model": [
+        "31",
+        0
+      ],
+      "image": [
+        "17",
+        0
+      ]
+    },
+    "class_type": "ImageUpscaleWithModel",
+    "_meta": {
+      "title": "使用模型放大图像"
+    }
+  },
+  "35": {
+    "inputs": {
+      "amount": 1,
+      "samples": [
+        "12",
+        0
+      ]
+    },
+    "class_type": "RepeatLatentBatch",
+    "_meta": {
+      "title": "复制Latent批次"
+    }
+  },
+  "41": {
+    "inputs": {
+      "model": "BiRefNet-HR-matting",
+      "mask_blur": 0,
+      "mask_offset": 0,
+      "invert_output": false,
+      "refine_foreground": false,
+      "background": "Alpha",
+      "background_color": "#222222",
+      "image": [
+        "45",
+        0
+      ]
+    },
+    "class_type": "BiRefNetRMBG",
+    "_meta": {
+      "title": "BiRefNet (RMBG)"
+    }
+  },
+  "42": {
+    "inputs": {
+      "image": [
+        "41",
+        0
+      ]
+    },
+    "class_type": "SplitImageWithAlpha",
+    "_meta": {
+      "title": "分离图像Alpha"
+    }
+  },
+  "45": {
+    "inputs": {
+      "width": 1024,
+      "height": 0,
+      "interpolation": "lanczos",
+      "method": "keep proportion",
+      "condition": "always",
+      "multiple_of": 0,
+      "image": [
+        "9",
+        0
+      ]
+    },
+    "class_type": "ImageResize+",
+    "_meta": {
+      "title": "🔧 Image Resize"
+    }
+  }
+}

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qwen 图像翻译</title>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+
+    </style>
+</head>
+<body>
+    <div id="app">
+        <a href="index.html" class="back-link">← 返回首页</a>
+
+        <div class="header">
+            <h1>🌐 Qwen 图像翻译</h1>
+            <p>AI驱动的图像文字智能翻译服务</p>
+        </div>
+
+        <div class="card">
+            <!-- 输入模式选择 -->
+            <div class="form-section">
+                <h3>📥 输入方式</h3>
+                <div class="input-mode-selector">
+                    <button
+                        class="mode-btn"
+                        :class="{ active: inputMode === 'upload' }"
+                        @click="inputMode = 'upload'"
+                    >
+                        📤 上传图片
+                    </button>
+                    <button
+                        class="mode-btn"
+                        :class="{ active: inputMode === 'url' }"
+                        @click="inputMode = 'url'"
+                    >
+                        🔗 图片URL
+                    </button>
+                </div>
+
+                <!-- 上传模式 -->
+                <div v-if="inputMode === 'upload'">
+                    <div
+                        class="file-upload-area"
+                        :class="{ 'has-file': selectedFile, 'dragover': isDragging }"
+                        @click="triggerFileInput"
+                        @dragover.prevent="isDragging = true"
+                        @dragleave.prevent="isDragging = false"
+                        @drop.prevent="handleFileDrop"
+                    >
+                        <div class="upload-icon">{{ selectedFile ? '✅' : '📤' }}</div>
+                        <div>
+                            <strong>{{ selectedFile ? selectedFile.name : '点击或拖拽上传图片' }}</strong>
+                        </div>
+                        <div class="hint-text" v-if="!selectedFile">
+                            支持 JPG、PNG 格式，包含文字的图片
+                        </div>
+                    </div>
+                    <input
+                        type="file"
+                        ref="fileInput"
+                        accept="image/*"
+                        style="display: none;"
+                        @change="handleFileSelect"
+                    >
+                </div>
+
+                <!-- URL模式 -->
+                <div v-if="inputMode === 'url'">
+                    <div class="form-group">
+                        <label>图片URL地址</label>
+                        <input
+                            type="text"
+                            v-model="imageUrl"
+                            placeholder="https://example.com/image.jpg"
+                        >
+                        <div class="hint-text">输入包含文字的图片链接</div>
+                    </div>
+                </div>
+
+                <div v-if="previewUrl" class="preview-container">
+                    <img :src="previewUrl" alt="预览图" class="preview-image">
+                </div>
+            </div>
+
+            <!-- 翻译配置 -->
+            <div class="form-section">
+                <h3>🌍 翻译配置</h3>
+
+                <div class="language-grid">
+                    <div class="form-group">
+                        <label>源语言</label>
+                        <select v-model="params.sourceLang">
+                            <option value="zh">中文 (zh)</option>
+                            <option value="en">English (en)</option>
+                            <option value="ja">日本語 (ja)</option>
+                            <option value="ko">한국어 (ko)</option>
+                            <option value="fr">Français (fr)</option>
+                            <option value="de">Deutsch (de)</option>
+                            <option value="es">Español (es)</option>
+                            <option value="ru">Русский (ru)</option>
+                        </select>
+                    </div>
+
+                    <button class="swap-btn" @click="swapLanguages" title="交换语言">
+                        ⇄
+                    </button>
+
+                    <div class="form-group">
+                        <label>目标语言</label>
+                        <select v-model="params.targetLang">
+                            <option value="en">English (en)</option>
+                            <option value="zh">中文 (zh)</option>
+                            <option value="ja">日本語 (ja)</option>
+                            <option value="ko">한국어 (ko)</option>
+                            <option value="fr">Français (fr)</option>
+                            <option value="de">Deutsch (de)</option>
+                            <option value="es">Español (es)</option>
+                            <option value="ru">Русский (ru)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 执行按钮 -->
+            <button
+                class="btn-primary"
+                @click="executeTranslate"
+                :disabled="!canExecute || processing"
+            >
+                <span v-if="processing">
+                    <span class="spinner"></span> 翻译中...
+                </span>
+                <span v-else>🚀 开始翻译</span>
+            </button>
+
+            <div v-if="progressMessage" class="progress-message">
+                {{ progressMessage }}
+            </div>
+
+            <div v-if="errorMessage" class="error-message">
+                ❌ {{ errorMessage }}
+            </div>
+
+            <!-- 结果展示 -->
+            <div v-if="result && result.success" class="result-panel">
+                <h3>✅ 翻译完成</h3>
+                <img :src="result.remoteUrl" alt="翻译结果" class="result-image">
+
+                <div class="result-info">
+                    <div class="info-item">
+                        <strong>文件名:</strong> {{ result.outputFilename }}
+                    </div>
+                    <div class="info-item">
+                        <strong>任务ID:</strong> {{ result.promptId }}
+                    </div>
+                    <div class="info-item">
+                        <strong>处理时间:</strong> {{ formatTime(result.executionTime) }}
+                    </div>
+                </div>
+
+                <a
+                    :href="downloadUrl"
+                    :download="result.outputFilename"
+                    class="btn-download"
+                >
+                    💾 下载图片
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    inputMode: 'upload',
+                    selectedFile: null,
+                    imageUrl: '',
+                    previewUrl: null,
+                    isDragging: false,
+                    processing: false,
+                    progressMessage: '',
+                    errorMessage: '',
+                    result: null,
+                    params: {
+                        sourceLang: 'zh',
+                        targetLang: 'en'
+                    }
+                };
+            },
+            computed: {
+                canExecute() {
+                    if (this.inputMode === 'upload') {
+                        return this.selectedFile !== null;
+                    } else {
+                        return this.imageUrl.trim() !== '';
+                    }
+                },
+                downloadUrl() {
+                    if (!this.result || !this.result.remoteUrl) return '';
+                    return `/api/matting/download?url=${encodeURIComponent(this.result.remoteUrl)}&filename=${encodeURIComponent(this.result.outputFilename)}`;
+                }
+            },
+            watch: {
+                inputMode(newMode) {
+                    this.result = null;
+                    this.errorMessage = '';
+                    if (newMode === 'url') {
+                        this.selectedFile = null;
+                        this.previewUrl = null;
+                    } else {
+                        this.imageUrl = '';
+                    }
+                },
+                imageUrl(newUrl) {
+                    if (newUrl && this.inputMode === 'url') {
+                        this.previewUrl = newUrl;
+                    }
+                }
+            },
+            methods: {
+                triggerFileInput() {
+                    this.$refs.fileInput.click();
+                },
+                handleFileSelect(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        this.setFile(file);
+                    }
+                },
+                handleFileDrop(event) {
+                    this.isDragging = false;
+                    const file = event.dataTransfer.files[0];
+                    if (file && file.type.startsWith('image/')) {
+                        this.setFile(file);
+                    }
+                },
+                setFile(file) {
+                    this.selectedFile = file;
+                    this.previewUrl = URL.createObjectURL(file);
+                    this.result = null;
+                    this.errorMessage = '';
+                },
+                swapLanguages() {
+                    const temp = this.params.sourceLang;
+                    this.params.sourceLang = this.params.targetLang;
+                    this.params.targetLang = temp;
+                },
+                async executeTranslate() {
+                    if (!this.canExecute) {
+                        this.errorMessage = '请选择图片或输入图片URL';
+                        return;
+                    }
+
+                    this.processing = true;
+                    this.progressMessage = '正在处理翻译任务...';
+                    this.errorMessage = '';
+                    this.result = null;
+
+                    try {
+                        const formData = new FormData();
+
+                        // 添加图片
+                        if (this.inputMode === 'upload' && this.selectedFile) {
+                            formData.append('image', this.selectedFile);
+                        } else if (this.inputMode === 'url') {
+                            formData.append('imageUrl', this.imageUrl);
+                        }
+
+                        // 只添加语言配置参数
+                        formData.append('sourceLang', this.params.sourceLang);
+                        formData.append('targetLang', this.params.targetLang);
+
+                        const response = await axios.post('/api/qwen/translate-image', formData, {
+                            headers: {
+                                'Content-Type': 'multipart/form-data'
+                            },
+                            timeout: 600000 // 10分钟超时
+                        });
+
+                        if (response.data.code === 200 && response.data.data) {
+                            this.result = response.data.data;
+                            this.progressMessage = '✅ 翻译完成！';
+                            setTimeout(() => {
+                                this.progressMessage = '';
+                            }, 3000);
+                        } else {
+                            this.errorMessage = response.data.message || '翻译失败';
+                        }
+                    } catch (error) {
+                        console.error('翻译失败:', error);
+                        this.errorMessage = error.response?.data?.message || error.message || '翻译失败，请检查网络连接';
+                    } finally {
+                        this.processing = false;
+                    }
+                },
+                formatTime(ms) {
+                    const seconds = Math.floor(ms / 1000);
+                    if (seconds < 60) {
+                        return `${seconds}秒`;
+                    }
+                    const minutes = Math.floor(seconds / 60);
+                    const remainingSeconds = seconds % 60;
+                    return `${minutes}分${remainingSeconds}秒`;
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

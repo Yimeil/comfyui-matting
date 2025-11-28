@@ -4,24 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>关键字抠图 - Keyword Matting</title>
+    <link rel="stylesheet" href="css/common.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        /* 页面特有样式 - 关键字抠图页面 */
 
+        /* 覆盖 body 居中布局 */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
-                         'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
         }
 
+        /* 容器样式 */
         .container {
             background: white;
             border-radius: 20px;
@@ -32,7 +26,7 @@
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--primary-gradient);
             color: white;
             padding: 30px;
             text-align: center;
@@ -139,14 +133,11 @@
             display: none;
         }
 
-        .form-group {
-            margin-bottom: 20px;
-        }
-
+        /* 表单样式使用 common.css 的 .form-group */
         .form-label {
             display: block;
             font-weight: 500;
-            color: #495057;
+            color: var(--text-secondary);
             margin-bottom: 8px;
             font-size: 14px;
         }
@@ -154,7 +145,7 @@
         .form-input {
             width: 100%;
             padding: 12px 15px;
-            border: 2px solid #e9ecef;
+            border: 2px solid var(--border-light);
             border-radius: 8px;
             font-size: 14px;
             transition: all 0.3s ease;
@@ -163,14 +154,14 @@
 
         .form-input:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px var(--primary-shadow);
         }
 
         .form-select {
             width: 100%;
             padding: 12px 15px;
-            border: 2px solid #e9ecef;
+            border: 2px solid var(--border-light);
             border-radius: 8px;
             font-size: 14px;
             background: white;
@@ -180,8 +171,8 @@
 
         .form-select:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px var(--primary-shadow);
         }
 
         .slider-container {
@@ -192,7 +183,7 @@
             width: 100%;
             height: 6px;
             border-radius: 3px;
-            background: #e9ecef;
+            background: var(--border-light);
             outline: none;
             -webkit-appearance: none;
         }
@@ -203,7 +194,7 @@
             width: 18px;
             height: 18px;
             border-radius: 50%;
-            background: #667eea;
+            background: var(--primary-color);
             cursor: pointer;
         }
 
@@ -211,14 +202,14 @@
             width: 18px;
             height: 18px;
             border-radius: 50%;
-            background: #667eea;
+            background: var(--primary-color);
             cursor: pointer;
             border: none;
         }
 
         .slider-value {
             display: inline-block;
-            background: #667eea;
+            background: var(--primary-color);
             color: white;
             padding: 4px 10px;
             border-radius: 4px;
@@ -245,13 +236,13 @@
 
         .advanced-header h3 {
             font-size: 15px;
-            color: #495057;
+            color: var(--text-secondary);
             font-weight: 600;
         }
 
         .toggle-icon {
             font-size: 12px;
-            color: #6c757d;
+            color: var(--text-tertiary);
             transition: transform 0.3s ease;
         }
 
@@ -263,7 +254,7 @@
             display: none;
             margin-top: 15px;
             padding-top: 15px;
-            border-top: 1px solid #e9ecef;
+            border-top: 1px solid var(--border-light);
         }
 
         .advanced-content.show {
@@ -276,6 +267,7 @@
             margin-top: 30px;
         }
 
+        /* 按钮样式 - 适配 keyword 页面布局 */
         .btn {
             flex: 1;
             padding: 15px 30px;
@@ -292,23 +284,13 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--primary-gradient);
             color: white;
         }
 
         .btn-primary:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn-secondary:hover:not(:disabled) {
-            background: #5a6268;
-            transform: translateY(-2px);
+            box-shadow: 0 8px 20px var(--primary-shadow);
         }
 
         .btn:disabled {
@@ -319,7 +301,7 @@
         .result-section {
             margin-top: 30px;
             padding: 30px;
-            background: #f8f9fa;
+            background: var(--bg-light);
             border-radius: 12px;
             display: none;
         }
@@ -350,7 +332,7 @@
 
         .result-item h3 {
             font-size: 16px;
-            color: #495057;
+            color: var(--text-secondary);
             margin-bottom: 15px;
         }
 
@@ -370,20 +352,7 @@
             display: block;
         }
 
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        /* spinner 使用 common.css 的样式 */
 
         .info-box {
             background: #e7f3ff;
@@ -403,16 +372,22 @@
 
         .tag {
             display: inline-block;
-            background: #e9ecef;
+            background: var(--border-light);
             padding: 4px 10px;
             border-radius: 4px;
             font-size: 12px;
             margin: 4px;
-            color: #495057;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tag:hover {
+            background: var(--primary-bg-lighter);
         }
 
         .tag.active {
-            background: #667eea;
+            background: var(--primary-color);
             color: white;
         }
     </style>

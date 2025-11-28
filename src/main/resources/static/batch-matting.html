@@ -4,44 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BiRefNet 批量抠图</title>
+    <link rel="stylesheet" href="css/common.css">
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        /* 页面特有样式 - 仅保留批量抠图页面的特殊布局和样式 */
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
+        /* 批量抠图页面使用更宽的容器 */
         #app {
             max-width: 1400px;
-            margin: 0 auto;
         }
 
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 20px;
-        }
-
-        .header h1 {
-            font-size: 2.2rem;
-            margin-bottom: 10px;
-        }
-
+        /* 双面板布局 */
         .card {
-            background: white;
-            border-radius: 20px;
             padding: 30px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-            margin-bottom: 30px;
+            max-width: none;
         }
 
         .main-layout {
@@ -68,159 +45,52 @@
             }
         }
 
-        .form-section {
-            margin-bottom: 25px;
-        }
-
-        .form-section h3 {
-            margin-bottom: 15px;
-            color: #333;
-            font-size: 1.1rem;
-            border-bottom: 2px solid #11998e;
-            padding-bottom: 8px;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: 500;
-            color: #555;
-            font-size: 0.9rem;
-        }
-
-        .form-group input[type="text"],
-        .form-group input[type="number"],
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 10px 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            transition: border-color 0.3s;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: #11998e;
-        }
-
-        .form-group input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-        }
-
+        /* 参数值显示 */
         .param-value {
-            color: #11998e;
+            color: var(--primary-color);
             font-weight: bold;
             margin-left: 8px;
         }
 
+        /* 文件上传区域 - 调整内边距 */
         .file-upload-area {
-            border: 3px dashed #ddd;
-            border-radius: 10px;
             padding: 30px 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            background: #fafafa;
         }
 
-        .file-upload-area:hover {
-            border-color: #11998e;
-            background: #f0fff4;
-        }
-
-        .file-upload-area.has-file {
-            border-color: #28a745;
-            background: #f0fff4;
-        }
-
+        /* 文件信息显示 - 成功状态绿色背景 */
         .file-info {
             margin-top: 10px;
             padding: 10px;
-            background: #e8f5e9;
+            background: var(--success-bg);
             border-radius: 8px;
-            color: #2e7d32;
+            color: var(--success-dark);
             font-size: 0.9rem;
         }
 
-        .btn {
-            padding: 12px 30px;
-            border: none;
-            border-radius: 10px;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-weight: 500;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(17, 153, 142, 0.4);
-        }
-
-        .btn-primary:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
+        /* 进度显示容器 */
         .progress {
             margin-top: 20px;
             padding: 20px;
-            background: #e8f5e9;
+            background: var(--success-bg);
             border-radius: 10px;
             text-align: center;
         }
 
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #11998e;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .error {
-            background: #ffebee;
-            color: #c62828;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
-        }
-
+        /* 结果区域 */
         .result-section {
             margin-top: 20px;
         }
 
+        /* 结果图片网格 */
         .result-images {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
             gap: 15px;
         }
 
+        /* 单个结果图片项 */
         .result-image-item {
-            border: 2px solid #eee;
+            border: 2px solid var(--border-light);
             border-radius: 10px;
             overflow: hidden;
             background: white;
@@ -234,52 +104,22 @@
         .result-image-item .image-info {
             padding: 10px;
             font-size: 0.85rem;
-            color: #666;
-            border-top: 1px solid #eee;
+            color: var(--text-tertiary);
+            border-top: 1px solid var(--border-light);
         }
 
-        .result-info {
-            margin-top: 15px;
-            padding: 15px;
-            background: #f9f9f9;
-            border-radius: 10px;
-        }
-
-        .result-info p {
-            margin-bottom: 8px;
-            color: #555;
-            font-size: 0.9rem;
-        }
-
-        .back-link {
-            display: inline-block;
-            margin-bottom: 15px;
-            color: white;
-            text-decoration: none;
-            font-size: 0.95rem;
-        }
-
-        .back-link:hover {
-            text-decoration: underline;
-        }
-
+        /* 路径输入区域 */
         .path-input-area {
-            border: 3px dashed #ddd;
+            border: 3px dashed var(--border-color);
             border-radius: 10px;
             padding: 20px;
-            background: #fafafa;
+            background: var(--bg-gray);
             transition: all 0.3s;
         }
 
         .path-input-area:focus-within {
-            border-color: #11998e;
-            background: #f0fff4;
-        }
-
-        .path-hint {
-            font-size: 0.8rem;
-            color: #999;
-            margin-top: 8px;
+            border-color: var(--primary-color);
+            background: var(--primary-bg-light);
         }
     </style>
 </head>
@@ -353,7 +193,7 @@
                                     rows="6"
                                     placeholder="http://example.com/image1.jpg&#10;http://example.com/image2.jpg&#10;http://example.com/image3.jpg"
                                     style="width: 100%; padding: 10px 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 0.95rem; font-family: monospace; resize: vertical;"></textarea>
-                                <p class="path-hint">
+                                <p class="hint-text">
                                     每行输入一个图片URL地址，支持批量处理
                                 </p>
                             </div>
@@ -405,7 +245,7 @@
                         <div class="form-group">
                             <label>文件名前缀</label>
                             <input type="text" v-model="params.filenamePrefix" placeholder="%date:yyyy-MM-dd%/first-matting/img">
-                            <p class="path-hint">
+                            <p class="hint-text">
                                 输出文件将保存到ComfyUI的output目录
                             </p>
                         </div>
@@ -428,8 +268,8 @@
                     </div>
 
                     <!-- 错误显示 -->
-                    <div v-if="errorMessage" class="error">
-                        {{ errorMessage }}
+                    <div v-if="errorMessage" class="error-message">
+                        ❌ {{ errorMessage }}
                     </div>
 
                     <!-- 结果显示 -->
@@ -451,7 +291,7 @@
                                 <div class="image-info">
                                     {{ image.filename }}
                                     <div style="margin-top: 5px; display: flex; gap: 10px; justify-content: center;">
-                                        <a :href="image.remoteUrl" target="_blank" style="color: #11998e; font-size: 0.75rem;">查看原图</a>
+                                        <a :href="image.remoteUrl" target="_blank" style="color: #667eea; font-size: 0.75rem;">查看原图</a>
                                         <a href="javascript:void(0)" @click="downloadImage(image)" style="color: #28a745; font-size: 0.75rem;">下载</a>
                                     </div>
                                 </div>
@@ -524,7 +364,7 @@
                         <div class="form-group">
                             <label>蒙版扩展 <span class="param-value">{{ params.maskExpand }}px</span></label>
                             <input type="range" v-model.number="params.maskExpand" min="-20" max="20" step="1">
-                            <p class="path-hint">负值收缩边缘，正值扩展边缘</p>
+                            <p class="hint-text">负值收缩边缘，正值扩展边缘</p>
                         </div>
 
                         <div class="form-group">
