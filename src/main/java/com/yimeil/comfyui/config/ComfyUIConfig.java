@@ -23,6 +23,11 @@ public class ComfyUIConfig {
      */
     private WorkflowConfig workflow = new WorkflowConfig();
 
+    /**
+     * Qwen 配置
+     */
+    private QwenConfig qwen = new QwenConfig();
+
     @Data
     public static class ApiConfig {
         /**
@@ -52,5 +57,13 @@ public class ComfyUIConfig {
          * 默认工作流文件名
          */
         private String defaultWorkflow = "sam_mask_matting_api.json";
+    }
+
+    @Data
+    public static class QwenConfig {
+        /**
+         * Qwen API 密钥
+         */
+        private String apiKey = "";
     }
 }

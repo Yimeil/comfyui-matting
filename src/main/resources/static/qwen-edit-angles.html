@@ -8,7 +8,56 @@
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <style>
-        /* 页面特有样式 - 无需额外样式，全部使用 common.css */
+        /* 页面特有样式 - 双面板布局 */
+        #app {
+            max-width: 1400px;
+        }
+
+        .card {
+            padding: 30px;
+            max-width: none;
+        }
+
+        .main-layout {
+            display: flex;
+            gap: 30px;
+        }
+
+        .left-panel {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .right-panel {
+            width: 500px;
+            flex-shrink: 0;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+
+        .right-panel-placeholder {
+            background: var(--bg-section);
+            border: 2px dashed var(--border-color);
+            border-radius: 10px;
+            padding: 60px 20px;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .right-panel-placeholder .icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        @media (max-width: 1000px) {
+            .main-layout {
+                flex-direction: column;
+            }
+            .right-panel {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -21,104 +70,134 @@
         </div>
 
         <div class="card">
-            <!-- 图片上传 -->
-            <div class="form-section">
-                <h3>📁 上传图片</h3>
-                <div
-                    class="file-upload-area"
-                    :class="{ 'has-file': selectedFile, 'dragover': isDragging }"
-                    @click="triggerFileInput"
-                    @dragover.prevent="isDragging = true"
-                    @dragleave.prevent="isDragging = false"
-                    @drop.prevent="handleFileDrop"
-                >
-                    <div class="upload-icon">{{ selectedFile ? '✅' : '📤' }}</div>
-                    <div>
-                        <strong>{{ selectedFile ? selectedFile.name : '点击或拖拽上传图片' }}</strong>
+            <div class="main-layout">
+                <!-- 左侧面板：输入和配置 -->
+                <div class="left-panel">
+                    <!-- 图片上传 -->
+                    <div class="form-section">
+                        <h3>📁 上传图片</h3>
+                        <div
+                            class="file-upload-area"
+                            :class="{ 'has-file': selectedFile, 'dragover': isDragging }"
+                            @click="triggerFileInput"
+                            @dragover.prevent="isDragging = true"
+                            @dragleave.prevent="isDragging = false"
+                            @drop.prevent="handleFileDrop"
+                        >
+                            <div class="upload-icon">{{ selectedFile ? '✅' : '📤' }}</div>
+                            <div>
+                                <strong>{{ selectedFile ? selectedFile.name : '点击或拖拽上传图片' }}</strong>
+                            </div>
+                            <div class="hint-text" v-if="!selectedFile">
+                                支持 JPG、PNG 格式
+                            </div>
+                        </div>
+                        <input
+                            type="file"
+                            ref="fileInput"
+                            accept="image/*"
+                            style="display: none;"
+                            @change="handleFileSelect"
+                        >
+
+                        <div v-if="previewUrl" class="preview-container">
+                            <img :src="previewUrl" alt="预览图" class="preview-image">
+                        </div>
                     </div>
-                    <div class="hint-text" v-if="!selectedFile">
-                        支持 JPG、PNG 格式
+
+                    <!-- 编辑指令 -->
+                    <div class="form-section">
+                        <h3>✏️ 编辑指令</h3>
+                        <div class="form-group">
+                            <label>编辑内容描述</label>
+                            <textarea
+                                v-model="params.editInstruction"
+                                placeholder="例如：将图中所有物品按照其真实世界的正常尺寸比例，合理摆放在儿童书桌上"
+                            ></textarea>
+                            <div class="hint-text">描述你想要的编辑效果，AI会保持物体数量和真实比例</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>生成批次</label>
+                            <input
+                                type="number"
+                                v-model.number="params.repeatAmount"
+                                min="1"
+                                max="10"
+                                placeholder="1-10"
+                            >
+                            <div class="hint-text">生成多个不同角度的结果，建议1-4批次</div>
+                        </div>
                     </div>
-                </div>
-                <input
-                    type="file"
-                    ref="fileInput"
-                    accept="image/*"
-                    style="display: none;"
-                    @change="handleFileSelect"
-                >
 
-                <div v-if="previewUrl" class="preview-container">
-                    <img :src="previewUrl" alt="预览图" class="preview-image">
-                </div>
-            </div>
-
-            <!-- 编辑指令 -->
-            <div class="form-section">
-                <h3>✏️ 编辑指令</h3>
-                <div class="form-group">
-                    <label>编辑内容描述</label>
-                    <textarea
-                        v-model="params.editInstruction"
-                        placeholder="例如：将图中所有物品按照其真实世界的正常尺寸比例，合理摆放在儿童书桌上"
-                    ></textarea>
-                    <div class="hint-text">描述你想要的编辑效果，AI会保持物体数量和真实比例</div>
-                </div>
-
-                <div class="form-group">
-                    <label>场景上下文（可选）</label>
-                    <input
-                        type="text"
-                        v-model="params.sceneContext"
-                        placeholder="例如：儿童房间、办公桌、户外草地等"
+                    <!-- 执行按钮 -->
+                    <button
+                        class="btn-primary"
+                        @click="executeEdit"
+                        :disabled="!selectedFile || processing"
                     >
-                </div>
-            </div>
+                        <span v-if="processing">
+                            <span class="spinner"></span> 处理中...
+                        </span>
+                        <span v-else>🚀 开始编辑</span>
+                    </button>
 
-            <!-- 执行按钮 -->
-            <button
-                class="btn-primary"
-                @click="executeEdit"
-                :disabled="!selectedFile || processing"
-            >
-                <span v-if="processing">
-                    <span class="spinner"></span> 处理中...
-                </span>
-                <span v-else>🚀 开始编辑</span>
-            </button>
-
-            <div v-if="progressMessage" class="progress-message">
-                {{ progressMessage }}
-            </div>
-
-            <div v-if="errorMessage" class="error-message">
-                ❌ {{ errorMessage }}
-            </div>
-
-            <!-- 结果展示 -->
-            <div v-if="result && result.success" class="result-panel">
-                <h3>✅ 编辑完成</h3>
-                <img :src="result.remoteUrl" alt="编辑结果" class="result-image">
-
-                <div class="result-info">
-                    <div class="info-item">
-                        <strong>文件名:</strong> {{ result.outputFilename }}
+                    <div v-if="progressMessage" class="progress-message">
+                        {{ progressMessage }}
                     </div>
-                    <div class="info-item">
-                        <strong>任务ID:</strong> {{ result.promptId }}
-                    </div>
-                    <div class="info-item">
-                        <strong>处理时间:</strong> {{ formatTime(result.executionTime) }}
+
+                    <div v-if="errorMessage" class="error-message">
+                        ❌ {{ errorMessage }}
                     </div>
                 </div>
 
-                <a
-                    :href="downloadUrl"
-                    :download="result.outputFilename"
-                    class="btn-download"
-                >
-                    💾 下载图片
-                </a>
+                <!-- 右侧面板：结果展示 -->
+                <div class="right-panel">
+                    <!-- 结果展示 -->
+                    <div v-if="result && result.success" class="result-panel">
+                        <h3>✅ 编辑完成 ({{ result.images ? result.images.length : 1 }}张)</h3>
+
+                        <!-- 多张图片展示 -->
+                        <div v-if="result.images && result.images.length > 0">
+                            <div v-for="(image, index) in result.images" :key="index" style="margin-bottom: 20px;">
+                                <h4 style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 8px;">
+                                    结果 {{ index + 1 }}
+                                </h4>
+                                <img :src="image.remoteUrl" :alt="'编辑结果 ' + (index + 1)" class="result-image">
+                                <div style="margin-top: 8px; text-align: center;">
+                                    <a
+                                        :href="getDownloadUrl(image)"
+                                        :download="image.filename"
+                                        class="btn-download"
+                                        style="display: inline-block; padding: 6px 16px; font-size: 0.85rem;"
+                                    >
+                                        💾 下载
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 单张图片展示（兼容旧版） -->
+                        <div v-else>
+                            <img :src="result.remoteUrl" alt="编辑结果" class="result-image">
+                        </div>
+
+                        <div class="result-info">
+                            <div class="info-item">
+                                <strong>任务ID:</strong> {{ result.promptId }}
+                            </div>
+                            <div class="info-item">
+                                <strong>处理时间:</strong> {{ formatTime(result.executionTime) }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 占位符 -->
+                    <div v-else class="right-panel-placeholder">
+                        <div class="icon">🎨</div>
+                        <p>编辑结果将在此处显示</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -138,17 +217,15 @@
                     result: null,
                     params: {
                         editInstruction: '将图中所有物品按照其真实世界的正常尺寸比例，合理摆放在儿童书桌上',
-                        sceneContext: ''
+                        repeatAmount: 4
                     }
                 };
             },
-            computed: {
-                downloadUrl() {
-                    if (!this.result || !this.result.remoteUrl) return '';
-                    return `/api/matting/download?url=${encodeURIComponent(this.result.remoteUrl)}&filename=${encodeURIComponent(this.result.outputFilename)}`;
-                }
-            },
             methods: {
+                getDownloadUrl(image) {
+                    if (!image || !image.remoteUrl) return '';
+                    return `/api/matting/download?url=${encodeURIComponent(image.remoteUrl)}&filename=${encodeURIComponent(image.filename)}`;
+                },
                 triggerFileInput() {
                     this.$refs.fileInput.click();
                 },
@@ -190,8 +267,8 @@
                         if (this.params.editInstruction) {
                             formData.append('editInstruction', this.params.editInstruction);
                         }
-                        if (this.params.sceneContext) {
-                            formData.append('sceneContext', this.params.sceneContext);
+                        if (this.params.repeatAmount) {
+                            formData.append('repeatAmount', this.params.repeatAmount);
                         }
 
                         const response = await axios.post('/api/qwen/edit-angles', formData, {

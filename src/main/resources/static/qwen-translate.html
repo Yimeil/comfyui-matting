@@ -8,7 +8,54 @@
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <style>
+        /* 页面特有样式 - 双面板布局 */
+        #app {
+            max-width: 1400px;
+        }
 
+        .card {
+            padding: 30px;
+            max-width: none;
+        }
+
+        .main-layout {
+            display: flex;
+            gap: 30px;
+        }
+
+        .left-panel {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .right-panel {
+            width: 450px;
+            flex-shrink: 0;
+        }
+
+        .right-panel-placeholder {
+            background: var(--bg-section);
+            border: 2px dashed var(--border-color);
+            border-radius: 10px;
+            padding: 60px 20px;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .right-panel-placeholder .icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        @media (max-width: 1000px) {
+            .main-layout {
+                flex-direction: column;
+            }
+            .right-panel {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -21,154 +68,168 @@
         </div>
 
         <div class="card">
-            <!-- 输入模式选择 -->
-            <div class="form-section">
-                <h3>📥 输入方式</h3>
-                <div class="input-mode-selector">
-                    <button
-                        class="mode-btn"
-                        :class="{ active: inputMode === 'upload' }"
-                        @click="inputMode = 'upload'"
-                    >
-                        📤 上传图片
-                    </button>
-                    <button
-                        class="mode-btn"
-                        :class="{ active: inputMode === 'url' }"
-                        @click="inputMode = 'url'"
-                    >
-                        🔗 图片URL
-                    </button>
-                </div>
-
-                <!-- 上传模式 -->
-                <div v-if="inputMode === 'upload'">
-                    <div
-                        class="file-upload-area"
-                        :class="{ 'has-file': selectedFile, 'dragover': isDragging }"
-                        @click="triggerFileInput"
-                        @dragover.prevent="isDragging = true"
-                        @dragleave.prevent="isDragging = false"
-                        @drop.prevent="handleFileDrop"
-                    >
-                        <div class="upload-icon">{{ selectedFile ? '✅' : '📤' }}</div>
-                        <div>
-                            <strong>{{ selectedFile ? selectedFile.name : '点击或拖拽上传图片' }}</strong>
+            <div class="main-layout">
+                <!-- 左侧面板：输入和配置 -->
+                <div class="left-panel">
+                    <!-- 输入模式选择 -->
+                    <div class="form-section">
+                        <h3>📥 输入方式</h3>
+                        <div class="input-mode-selector">
+                            <button
+                                class="mode-btn"
+                                :class="{ active: inputMode === 'upload' }"
+                                @click="inputMode = 'upload'"
+                            >
+                                📤 上传图片
+                            </button>
+                            <button
+                                class="mode-btn"
+                                :class="{ active: inputMode === 'url' }"
+                                @click="inputMode = 'url'"
+                            >
+                                🔗 图片URL
+                            </button>
                         </div>
-                        <div class="hint-text" v-if="!selectedFile">
-                            支持 JPG、PNG 格式，包含文字的图片
+
+                        <!-- 上传模式 -->
+                        <div v-if="inputMode === 'upload'">
+                            <div
+                                class="file-upload-area"
+                                :class="{ 'has-file': selectedFile, 'dragover': isDragging }"
+                                @click="triggerFileInput"
+                                @dragover.prevent="isDragging = true"
+                                @dragleave.prevent="isDragging = false"
+                                @drop.prevent="handleFileDrop"
+                            >
+                                <div class="upload-icon">{{ selectedFile ? '✅' : '📤' }}</div>
+                                <div>
+                                    <strong>{{ selectedFile ? selectedFile.name : '点击或拖拽上传图片' }}</strong>
+                                </div>
+                                <div class="hint-text" v-if="!selectedFile">
+                                    支持 JPG、PNG 格式，包含文字的图片
+                                </div>
+                            </div>
+                            <input
+                                type="file"
+                                ref="fileInput"
+                                accept="image/*"
+                                style="display: none;"
+                                @change="handleFileSelect"
+                            >
+                        </div>
+
+                        <!-- URL模式 -->
+                        <div v-if="inputMode === 'url'">
+                            <div class="form-group">
+                                <label>图片URL地址</label>
+                                <input
+                                    type="text"
+                                    v-model="imageUrl"
+                                    placeholder="https://example.com/image.jpg"
+                                >
+                                <div class="hint-text">输入包含文字的图片链接</div>
+                            </div>
+                        </div>
+
+                        <div v-if="previewUrl" class="preview-container">
+                            <img :src="previewUrl" alt="预览图" class="preview-image">
                         </div>
                     </div>
-                    <input
-                        type="file"
-                        ref="fileInput"
-                        accept="image/*"
-                        style="display: none;"
-                        @change="handleFileSelect"
+
+                    <!-- 翻译配置 -->
+                    <div class="form-section">
+                        <h3>🌍 翻译配置</h3>
+
+                        <div class="language-grid">
+                            <div class="form-group">
+                                <label>源语言</label>
+                                <select v-model="params.sourceLang">
+                                    <option value="zh">中文 (zh)</option>
+                                    <option value="en">English (en)</option>
+                                    <option value="ja">日本語 (ja)</option>
+                                    <option value="ko">한국어 (ko)</option>
+                                    <option value="fr">Français (fr)</option>
+                                    <option value="de">Deutsch (de)</option>
+                                    <option value="es">Español (es)</option>
+                                    <option value="ru">Русский (ru)</option>
+                                </select>
+                            </div>
+
+                            <button class="swap-btn" @click="swapLanguages" title="交换语言">
+                                ⇄
+                            </button>
+
+                            <div class="form-group">
+                                <label>目标语言</label>
+                                <select v-model="params.targetLang">
+                                    <option value="en">English (en)</option>
+                                    <option value="zh">中文 (zh)</option>
+                                    <option value="ja">日本語 (ja)</option>
+                                    <option value="ko">한국어 (ko)</option>
+                                    <option value="fr">Français (fr)</option>
+                                    <option value="de">Deutsch (de)</option>
+                                    <option value="es">Español (es)</option>
+                                    <option value="ru">Русский (ru)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 执行按钮 -->
+                    <button
+                        class="btn-primary"
+                        @click="executeTranslate"
+                        :disabled="!canExecute || processing"
                     >
+                        <span v-if="processing">
+                            <span class="spinner"></span> 翻译中...
+                        </span>
+                        <span v-else>🚀 开始翻译</span>
+                    </button>
+
+                    <div v-if="progressMessage" class="progress-message">
+                        {{ progressMessage }}
+                    </div>
+
+                    <div v-if="errorMessage" class="error-message">
+                        ❌ {{ errorMessage }}
+                    </div>
                 </div>
 
-                <!-- URL模式 -->
-                <div v-if="inputMode === 'url'">
-                    <div class="form-group">
-                        <label>图片URL地址</label>
-                        <input
-                            type="text"
-                            v-model="imageUrl"
-                            placeholder="https://example.com/image.jpg"
+                <!-- 右侧面板：结果展示 -->
+                <div class="right-panel">
+                    <!-- 结果展示 -->
+                    <div v-if="result && result.success" class="result-panel">
+                        <h3>✅ 翻译完成</h3>
+                        <img :src="result.remoteUrl" alt="翻译结果" class="result-image">
+
+                        <div class="result-info">
+                            <div class="info-item">
+                                <strong>文件名:</strong> {{ result.outputFilename }}
+                            </div>
+                            <div class="info-item">
+                                <strong>任务ID:</strong> {{ result.promptId }}
+                            </div>
+                            <div class="info-item">
+                                <strong>处理时间:</strong> {{ formatTime(result.executionTime) }}
+                            </div>
+                        </div>
+
+                        <a
+                            :href="downloadUrl"
+                            :download="result.outputFilename"
+                            class="btn-download"
                         >
-                        <div class="hint-text">输入包含文字的图片链接</div>
+                            💾 下载图片
+                        </a>
+                    </div>
+
+                    <!-- 占位符 -->
+                    <div v-else class="right-panel-placeholder">
+                        <div class="icon">🖼️</div>
+                        <p>翻译结果将在此处显示</p>
                     </div>
                 </div>
-
-                <div v-if="previewUrl" class="preview-container">
-                    <img :src="previewUrl" alt="预览图" class="preview-image">
-                </div>
-            </div>
-
-            <!-- 翻译配置 -->
-            <div class="form-section">
-                <h3>🌍 翻译配置</h3>
-
-                <div class="language-grid">
-                    <div class="form-group">
-                        <label>源语言</label>
-                        <select v-model="params.sourceLang">
-                            <option value="zh">中文 (zh)</option>
-                            <option value="en">English (en)</option>
-                            <option value="ja">日本語 (ja)</option>
-                            <option value="ko">한국어 (ko)</option>
-                            <option value="fr">Français (fr)</option>
-                            <option value="de">Deutsch (de)</option>
-                            <option value="es">Español (es)</option>
-                            <option value="ru">Русский (ru)</option>
-                        </select>
-                    </div>
-
-                    <button class="swap-btn" @click="swapLanguages" title="交换语言">
-                        ⇄
-                    </button>
-
-                    <div class="form-group">
-                        <label>目标语言</label>
-                        <select v-model="params.targetLang">
-                            <option value="en">English (en)</option>
-                            <option value="zh">中文 (zh)</option>
-                            <option value="ja">日本語 (ja)</option>
-                            <option value="ko">한국어 (ko)</option>
-                            <option value="fr">Français (fr)</option>
-                            <option value="de">Deutsch (de)</option>
-                            <option value="es">Español (es)</option>
-                            <option value="ru">Русский (ru)</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 执行按钮 -->
-            <button
-                class="btn-primary"
-                @click="executeTranslate"
-                :disabled="!canExecute || processing"
-            >
-                <span v-if="processing">
-                    <span class="spinner"></span> 翻译中...
-                </span>
-                <span v-else>🚀 开始翻译</span>
-            </button>
-
-            <div v-if="progressMessage" class="progress-message">
-                {{ progressMessage }}
-            </div>
-
-            <div v-if="errorMessage" class="error-message">
-                ❌ {{ errorMessage }}
-            </div>
-
-            <!-- 结果展示 -->
-            <div v-if="result && result.success" class="result-panel">
-                <h3>✅ 翻译完成</h3>
-                <img :src="result.remoteUrl" alt="翻译结果" class="result-image">
-
-                <div class="result-info">
-                    <div class="info-item">
-                        <strong>文件名:</strong> {{ result.outputFilename }}
-                    </div>
-                    <div class="info-item">
-                        <strong>任务ID:</strong> {{ result.promptId }}
-                    </div>
-                    <div class="info-item">
-                        <strong>处理时间:</strong> {{ formatTime(result.executionTime) }}
-                    </div>
-                </div>
-
-                <a
-                    :href="downloadUrl"
-                    :download="result.outputFilename"
-                    class="btn-download"
-                >
-                    💾 下载图片
-                </a>
             </div>
         </div>
     </div>

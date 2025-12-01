@@ -27,9 +27,9 @@ public class QwenTranslateRequest {
     private String targetLang = "en";
 
     /**
-     * Qwen API密钥（必需）
+     * Qwen API密钥（从配置文件读取）
      */
-    private String apiKey = "sk-35eaf027ad4e45f7aa13f8ffbdd762b0";
+    private String apiKey;
 
     /**
      * 上传方法（dashscope/oss）

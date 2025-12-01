@@ -50,6 +50,11 @@ comfyui:
     # 默认工作流
     default: sam_mask_matting_api.json
 
+  # Qwen 配置
+  qwen:
+    # Qwen API密钥（必需）
+    api-key: sk-35eaf027ad4e45f7aa13f8ffbdd762b0
+
 # 输出配置
 output:
   # 输出目录
